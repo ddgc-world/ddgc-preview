@@ -233,6 +233,27 @@
     }
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
   </style>
+<style>
+@media (max-width:760px){
+  body.home-route{height:auto;overflow:visible}
+  body.home-route .site-shell{height:auto;min-height:100svh}
+  body.home-route .site-header{display:block;position:relative;height:auto;padding:16px 18px 0;text-align:center}
+  body.home-route .brand-link{width:min(64vw,300px);margin:0 auto}
+  body.home-route .desktop-anybody{display:block!important;position:absolute;top:16px;right:18px;margin:0;z-index:22}
+  body.home-route .home{display:block;padding:22px 0 0}
+  body.home-route .home-orbit{display:flex;flex-direction:column;align-items:stretch;width:100%;margin:0;padding:0 24px;gap:32px}
+  body.home-route .hero-title{font-size:clamp(42px,12.5vw,68px);line-height:1.08;margin:4px auto 0;max-width:100%}
+  body.home-route .hero-title .mobile-line{margin:0 auto clamp(6px,1.2svh,10px)}
+  body.home-route .home-quote{text-align:left;white-space:normal;max-width:100%;font-size:14px}
+  body.home-route .home-quote .quote-sentence{display:block}
+  body.home-route .quote-name{margin:4px 0 0 auto}
+  body.home-route .home-logo{width:min(54vw,240px);margin:0 auto}
+  body.home-route .home-tagline{order:4;text-align:left;max-width:100%;margin:0}
+  body.home-route .home-tagline .stack{display:block}
+  body.home-route .more-link{order:5;align-self:flex-end;max-width:none;margin:0}
+  body.home-route .site-footer{padding:36px 10px 30px}
+}
+</style>
 </head>
 <body class="home-route">
 <div class="site-shell">
