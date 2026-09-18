@@ -33,10 +33,10 @@
     button,a{-webkit-tap-highlight-color:transparent}
     img{display:block;max-width:100%}
     .site-shell{min-height:100svh;display:flex;flex-direction:column;overflow:hidden}
-    body.home-route,body.about-route{height:100svh;overflow:hidden}
-    body.home-route .site-shell,body.about-route .site-shell{height:100svh;min-height:0}
-    body.home-route main,body.about-route main{min-height:0}
-    body.about-route [data-page="about"]{min-height:0}
+    body.home-route,body.about-route,body.projects-route,body.contact-route,body.policy-route,body.terms-route{height:100svh;overflow:hidden}
+    body.home-route .site-shell,body.about-route .site-shell,body.projects-route .site-shell,body.contact-route .site-shell,body.policy-route .site-shell,body.terms-route .site-shell{height:100svh;min-height:0}
+    body.home-route main,body.about-route main,body.projects-route main,body.contact-route main,body.policy-route main,body.terms-route main{min-height:0}
+    body.about-route [data-page="about"],body.projects-route [data-page="projects"],body.contact-route [data-page="contact"],body.policy-route [data-page="policy"],body.terms-route [data-page="terms"]{min-height:0}
     .site-header{height:var(--header-h);flex:0 0 var(--header-h);display:flex;align-items:flex-start;justify-content:space-between;padding:12px clamp(24px,4vw,64px) 0;position:relative;z-index:20}
     .brand-link{display:block;width:calc(var(--home-mark-size) * 2.18);text-decoration:none}
     .brand-link img{width:100%;height:auto}
@@ -54,7 +54,7 @@
     .home-orbit{--orbit-gap:clamp(32px,5vmin,64px);--orbit-side-gap:clamp(72px,11vmin,104px);display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-rows:auto auto auto;column-gap:var(--orbit-side-gap);row-gap:var(--orbit-gap);align-items:center;width:min(1120px,100%);margin:auto}
     .hero-title{grid-column:1/-1;grid-row:1;align-self:end;font-family:Poppins,sans-serif;font-size:clamp(38px,min(5.6vw,9vh),76px);line-height:1.05;font-style:italic;font-weight:400;letter-spacing:-.035em;text-transform:none;text-align:center;text-decoration:underline;text-decoration-thickness:3px;text-underline-offset:4px;margin:0;width:max-content;max-width:100%;justify-self:center}
     .hero-title .mobile-line{display:inline}
-    .home-quote{grid-column:1;grid-row:2;justify-self:end;width:max-content;max-width:100%;white-space:nowrap;text-align:left;font-family:Poppins,sans-serif;font-weight:400;font-size:14px;font-style:normal;line-height:1.65;letter-spacing:0;text-transform:none}
+    .home-quote{grid-column:1;grid-row:2;justify-self:end;width:max-content;max-width:100%;white-space:nowrap;text-align:right;font-family:Poppins,sans-serif;font-weight:400;font-size:14px;font-style:normal;line-height:1.65;letter-spacing:0;text-transform:none}
     .home-logo{grid-column:2;grid-row:2;width:calc(var(--home-mark-size) * 1.42);margin:0;transition:transform .24s ease}
     .more-link{grid-column:3;grid-row:2;justify-self:start;font-family:Poppins,sans-serif;font-size:14px;font-style:normal;font-weight:400;line-height:1.65;letter-spacing:0;text-transform:none;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
     .home-tagline{grid-column:1/-1;grid-row:3;align-self:start;font-family:Poppins,sans-serif;text-align:center;font-size:14px;font-style:normal;font-weight:400;line-height:1.65;letter-spacing:0;text-transform:none;margin:0;justify-self:center}
@@ -82,10 +82,12 @@
     .about-closing span{display:block}
     body.about-route .content-page{height:100%;min-height:0;padding:clamp(8px,1.8svh,18px) 0 clamp(4px,1svh,10px);display:flex;flex-direction:column;justify-content:space-between}
     body.about-route .page-kicker{margin:0 0 clamp(2px,.6svh,6px)}
-    body.about-route .page-sub{margin:0 auto clamp(8px,1.5svh,16px)}
+    body.about-route .page-sub{margin:0 auto clamp(2px,.6svh,6px)}
+    .about-intro{max-width:760px;margin:0 auto clamp(8px,1.5svh,16px);text-align:center;font-size:14px;line-height:1.65}
     body.about-route .about-grid{margin:0 auto clamp(10px,2svh,20px);gap:clamp(24px,4vw,64px)}
     body.about-route .about-logo{width:clamp(88px,15svh,150px)}
     body.about-route .about-lower{margin:0 auto clamp(8px,1.5svh,16px);gap:clamp(38px,8vw,110px)}
+    .about-contact{padding-top:34px}
     .word-link{font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
     .anybody-page{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:30px 0 80px;text-align:center;color:var(--ink)}
     .anybody-page .page-sub{color:var(--ink);margin-bottom:34px}
@@ -111,27 +113,24 @@
     .accordion-panel p{margin:0;padding:0 34px 22px 2px;color:var(--ink);font-size:14px;line-height:1.65}
     .anybody-contact{font-family:Poppins,sans-serif;font-size:14px;font-weight:400;line-height:1.65;color:var(--ink);margin:13px 0 0}
     .anybody-contact a{font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
-    .button-link,.submit-button{display:inline-flex;align-items:center;justify-content:center;border:0;background:var(--ink);color:var(--bg);padding:12px 26px;border-radius:0;font-family:Poppins,sans-serif;font-size:14px;font-weight:700;text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
-    .button-link:hover,.submit-button:hover{background:var(--bg);color:var(--ink)}
-    .contact-page{width:min(760px,calc(100% - 48px));margin:0 auto;padding:35px 0 90px}
-    .contact-intro{text-align:center;margin:0 auto 45px;font-size:14px;max-width:680px}
-    .contact-form{display:grid;gap:24px}
-    .field{display:grid;gap:8px}
-    .field label,.fieldset legend{font-family:Poppins,sans-serif;font-weight:700;font-size:15px}
-    .field input,.field textarea{width:100%;border:0;background:var(--soft);border-radius:0;padding:13px 14px;outline:none}
-    .field textarea{min-height:150px;resize:vertical;padding:14px}
-    .field input:focus,.field textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--focus) 30%,transparent)}
-    .fieldset{border:0;padding:0;margin:0;display:grid;gap:11px}
-    .check-row{display:flex;align-items:center;gap:11px;cursor:pointer;width:max-content;max-width:100%}
-    .check-row input{width:18px;height:18px;accent-color:var(--ink)}
-    .else-field[hidden]{display:none}
-    .form-note{font-size:14px;color:var(--muted);margin:0}
-    .success-panel{display:none;text-align:center;padding:80px 0}
-    .success-panel.show{display:block}
-    .success-panel h2{font-family:Poppins,sans-serif;font-size:16px;font-weight:700;line-height:1.4;margin:0 0 20px}
+    .button-link{display:inline-flex;align-items:center;justify-content:center;border:0;background:var(--ink);color:var(--bg);padding:12px 26px;border-radius:0;font-family:Poppins,sans-serif;font-size:14px;font-weight:700;text-decoration:none;cursor:pointer;transition:background .15s,color .15s}
+    .button-link:hover{background:var(--bg);color:var(--ink)}
+    .contact-page{width:min(760px,calc(100% - 48px));height:100%;min-height:0;margin:0 auto;padding:0;display:flex;align-items:center;justify-content:center;text-align:center}
+    .contact-copy{max-width:650px}
+    .contact-copy .page-kicker{margin:0 0 10px}
+    .contact-copy p{margin:0}
+    .contact-copy .contact-line{margin-top:12px}
+    .contact-line{font-family:Poppins,sans-serif;font-size:14px;font-weight:400;line-height:1.65;margin:0}
+    .contact-line a{font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
     .legal-page{width:min(850px,calc(100% - 48px));margin:auto;padding:50px 0 120px;text-align:center;justify-content:center}
+    body.projects-route .legal-page,body.policy-route .legal-page,body.terms-route .legal-page{height:100%;min-height:0;padding:clamp(12px,4svh,40px) 0;display:flex;flex-direction:column;justify-content:center}
     .legal-page .page-kicker{font-weight:700}
     .legal-page p{font-size:14px;line-height:1.8}
+    .projects-intro{max-width:760px;margin:0 auto clamp(24px,5svh,48px)}
+    .project-entry h2{font-size:14px;line-height:1.5;margin:0 0 6px;font-weight:700}
+    .project-entry p{margin:0}
+    .project-entry a{font-weight:700;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px}
+    .undisclosed{margin:clamp(24px,5svh,48px) 0 0!important}
     .focus-visible:focus-visible,a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--focus);outline-offset:4px}
     @media (max-width:760px){
       :root{--header-h:clamp(78px,15svh,112px);--home-mark-size:min(22vw,10svh,88px)}
@@ -160,6 +159,12 @@
       .footer-nav a+a{margin-left:0}
       .footer-spacer{display:none}
       .content-page,.anybody-page,.contact-page,.legal-page{width:calc(100% - 36px);padding-top:30px}
+      body.contact-route{position:fixed;inset:0;width:100%;height:100svh;overflow:hidden;--header-h:76px;--home-mark-size:58px}
+      body.contact-route .contact-page{height:100%;min-height:0;padding:0 0 2px}
+      body.contact-route .site-footer{flex-direction:row;justify-content:space-between;align-items:center;gap:12px;padding:4px 14px 8px}
+      body.contact-route .footer-nav{justify-content:flex-end;column-gap:10px}
+      body.policy-route,body.terms-route{position:fixed;inset:0;width:100%;overflow:hidden}
+      body.policy-route .legal-page,body.terms-route .legal-page{padding:clamp(12px,4svh,40px) 0;overflow:hidden}
       .page-sub{margin-bottom:34px}
       .about-grid{display:flex;flex-direction:column;gap:55px;margin-bottom:65px}
       .about-logo{order:2}
@@ -170,11 +175,13 @@
       body.about-route .content-page{--about-copy:clamp(10px,min(3.45vw,1.75svh),14px);width:calc(100% - 28px);padding:0 0 2px;justify-content:space-between}
       body.about-route .page-kicker{font-size:calc(var(--about-copy) + 2px);line-height:1.25;margin:0}
       body.about-route .page-sub{font-size:var(--about-copy);line-height:1.3;margin:0}
+      body.about-route .about-intro{font-size:var(--about-copy);line-height:1.3;margin:0}
       body.about-route .about-grid{gap:clamp(2px,.7svh,6px);margin:0}
       body.about-route .about-logo{width:clamp(44px,8.5svh,72px)}
       body.about-route .text-block h2{font-size:calc(var(--about-copy) + 2px);line-height:1.25;margin:0 0 2px}
       body.about-route .text-block p{font-size:var(--about-copy);line-height:1.35}
       body.about-route .about-lower{gap:clamp(3px,.8svh,7px);margin:0}
+      body.about-route .about-contact{padding-top:0}
       body.about-route .about-lower p[style]{margin-top:clamp(2px,.5svh,5px)!important}
       body.about-route .about-closing{font-size:calc(var(--about-copy) + 1px);line-height:1.25}
       .flowcharts{grid-template-columns:1fr;gap:38px;margin-bottom:38px}
@@ -198,14 +205,19 @@
       body.about-route .content-page{--about-copy:clamp(10px,2.2svh,13px);padding:0 0 2px}
       body.about-route .page-kicker{font-size:calc(var(--about-copy) + 2px);line-height:1.2;margin:0}
       body.about-route .page-sub{font-size:var(--about-copy);line-height:1.25;margin:0}
+      body.about-route .about-intro{font-size:var(--about-copy);line-height:1.25;margin:0}
       body.about-route .about-grid{gap:clamp(12px,3vw,32px);margin:0}
       body.about-route .about-logo{width:clamp(48px,12svh,66px)}
       body.about-route .text-block h2{font-size:calc(var(--about-copy) + 2px);line-height:1.2;margin:0 0 2px}
       body.about-route .text-block p{font-size:var(--about-copy);line-height:1.3}
       body.about-route .about-lower{gap:clamp(24px,6vw,70px);margin:0}
+      body.about-route .about-contact{padding-top:0}
       body.about-route .about-lower p[style]{margin-top:2px!important}
       body.about-route .about-closing{font-size:calc(var(--about-copy) + 1px);line-height:1.2}
       body.about-route .site-footer{padding:4px 20px 7px}
+    }
+    @media (min-width:761px) and (max-height:560px){
+      body.about-route .about-contact{padding-top:calc(var(--about-copy) * 1.2 + 4.4px)}
     }
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
   </style>
@@ -231,7 +243,8 @@
     <section class="page" data-page="about" aria-labelledby="about-title">
       <div class="content-page">
         <h1 class="page-kicker" id="about-title">Who We Are</h1>
-        <p class="page-sub">We are DDGC (<span class="straight-underline">Divine Dreams Group of Companies</span>)</p>
+        <p class="page-sub">We are DDGC (<span class="straight-underline">Divine Dream Group of Companies</span>)</p>
+        <p class="about-intro">We bring everything together so every part can strengthen the whole.</p>
         <div class="about-grid">
           <article class="text-block what-block">
             <h2>What</h2>
@@ -246,11 +259,10 @@
         <div class="about-lower">
           <article class="text-block">
             <h2>Why</h2>
-            <p>All of the problem in the world are all connected and therefore the solutions can't be found in separate companies. There needs to be one system and that's <span class="word-link">DDGC</span></p>
+            <p>All of the problem in the world are connected and therefore the solutions can't be found in separate companies. There needs to be one system and that's <span class="straight-underline">DDGC</span></p>
           </article>
-          <article class="text-block">
-            <p>For more details about DDGC. Fill out the form in the contact and we'll help you based on your inquiry.</p>
-            <p style="margin-top:18px"><a class="word-link" href="#/contact" data-route="contact">Contact</a></p>
+          <article class="text-block about-contact">
+            <p>For more details about DDGC, <a class="word-link" href="#/contact" data-route="contact">contact us</a> and we'll help you based on your inquiry.</p>
           </article>
         </div>
         <p class="about-closing"><span>DDGC is not for everyone</span><span>Our results are.</span></p>
@@ -306,11 +318,11 @@
           <div class="accordion" id="anybody-accordion">
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>Owners</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
-            <div class="accordion-panel"><div><p>Your land is just a land. Your company is just another company. In short your asset alone is fragile. One market difference, one bad season, one missed trend and they stop working. In AnyBody nothing works alone. Your asset doesn't have to be perfect. It doesn't have to be complete . It just have to exist. Because in the AnyBody Pool, what your company lack the other company have surplus of it, and because of that nothing lacks anything. Your weakness is cover by the others strength. Your asset value no longer depends on what it can do but what everything together can do. That means your returns don't come from one asset's performance, but from a combined system, that is structure to work in all case. Your job is to own, our job is to make you benefit more than you will alone.</p></div></div>
+            <div class="accordion-panel"><div><p>Your land is just a land. Your company is just another company. In short your asset alone is fragile. One market difference, one bad season, one missed trend and they stop working. In AnyBody nothing works alone. Your asset doesn't have to be perfect. It doesn't have to be complete . It just has to exist. Because in the AnyBody Pool, what your company lack the other company have surplus of it, and because of that nothing lacks anything. Your weakness is covered by the others' strength. Your asset value no longer depends on what it can do but what everything together can do. That means your returns don't come from one asset's performance, but from a combined system, that is structure to work in all case. Your job is to own, our job is to make you benefit more than you will alone.</p></div></div>
           </div>
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>AnyBody Pool</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
-            <div class="accordion-panel"><div><p>It's the first structure where land, companies, intellectual property, an other assets are pooled into one system, not to be managed separately but to function as a single diversified system. It's the first box in the diagram, in this box three things go: Land (from Landowners) Companies (from Companies Owners) Other Assets (from Other assets owners)</p></div></div>
+            <div class="accordion-panel"><div><p>It's the first structure where land, companies, intellectual property, other assets are pooled into one system, not to be managed separately but to function as a single diversified system. It's the first box in the diagram, in this box three things go: Land (from Landowners) Companies (from Companies Owners) Other Assets (from Other assets owners)</p></div></div>
           </div>
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>Finance</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
@@ -318,40 +330,36 @@
           </div>
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>Projects</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
-            <div class="accordion-panel"><div><p>Projects are not predetermined. After the pool is complete and finance is secured, we analyze the pool: all land, companies, and assets, their locations, capabilities and market conditions. We then calculate what's going to be be most profitable development and strategic uses of the budget and leverages the global spread of the pool. We don't decide in advance because the best projects for the pool depends on what is in the pool. The pool decides through data, locations, and market demand.</p></div></div>
+            <div class="accordion-panel"><div><p>Projects are not predetermined. After the pool is complete and finance is secured, we analyze the pool: all land, companies, and assets, their locations, capabilities and market conditions. We then calculate what's going to be most profitable development and strategic uses of the budget and leverages the global spread of the pool. We don't decide in advance because the best projects for the pool depends on what is in the pool. The pool decides through data, locations, and market demand.</p></div></div>
           </div>
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>55% to owners</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
             <div class="accordion-panel"><div><p>55% of all profits generated across all projects combined will be distributed annually, forever, to all asset owners in the pool. This will be proportional to the initial value of their assets when it was contributed to the pool. You are paid from the success of the entire system, not just your individual asset. the strength of the pool ensures this share is stable and growing, because your return is backed by dozens of assets, not one.</p></div></div>
           </div>
           </div>
-          <p class="anybody-contact">Fore more information about AnyBody Fill out the <a href="#/contact" data-route="contact">contact</a> form, and we'll get back to you as soon as possible</p>
+          <p class="anybody-contact">For more information about AnyBody, <a href="#/contact" data-route="contact">contact us</a> and we'll get back to you as soon as possible.</p>
         </div>
+      </div>
+    </section>
+
+    <section class="page" data-page="projects" aria-labelledby="projects-title">
+      <div class="legal-page projects-page">
+        <h1 class="page-kicker" id="projects-title">Projects</h1>
+        <p class="projects-intro">DDGC is the home of everything. Here, no project stands alone. Every project is connected and works with the others to achieve each other's goals, so progress in one strengthens the entire system.</p>
+        <article class="project-entry">
+          <h2>AnyBody</h2>
+          <p>A lifetime partnership that connects asset owners and DDGC through one shared system. <a href="#/anybody" data-route="anybody">See more</a></p>
+        </article>
+        <p class="undisclosed">Other projects are undisclosed.</p>
       </div>
     </section>
 
     <section class="page" data-page="contact" aria-labelledby="contact-title">
       <div class="contact-page">
-        <h1 class="page-kicker" id="contact-title">Talk To DDGC</h1>
-        <p class="contact-intro">This form is for everything you'd like to ask/know about DDGC and we'll get back to you shortly.</p>
-        <form class="contact-form" id="contact-form">
-          <div class="field"><label for="name">Name</label><input id="name" name="name" autocomplete="name"></div>
-          <div class="field"><label for="email">Email *</label><input id="email" name="email" type="email" autocomplete="email" required></div>
-          <fieldset class="fieldset">
-            <legend>What is your inquiry about?</legend>
-            <label class="check-row"><input type="checkbox" name="inquiry" value="DDGC"> DDGC</label>
-            <label class="check-row"><input type="checkbox" name="inquiry" value="AnyBody"> AnyBody</label>
-            <label class="check-row"><input type="checkbox" name="inquiry" value="Partnership"> Partnership</label>
-            <label class="check-row"><input type="checkbox" name="inquiry" value="Something else" id="something-else"> Something else</label>
-          </fieldset>
-          <div class="field else-field" id="else-field" hidden><label for="describe">Please describe</label><input id="describe" name="describe"></div>
-          <div class="field"><label for="message">Message *</label><textarea id="message" name="message" required></textarea></div>
-          <p class="form-note">Send opens your email app with this inquiry addressed to AnyBody@DDGC.world.</p>
-          <button class="submit-button" type="submit">Send</button>
-        </form>
-        <div class="success-panel" id="contact-success" role="status">
-          <h2>Thanks for your Inquire.</h2>
-          <p>We'll get back to you as soon as possible.</p>
+        <div class="contact-copy">
+          <h1 class="page-kicker" id="contact-title">Talk to DDGC</h1>
+          <p>Whether you want to understand our work, discuss AnyBody, or explore how we can work together, tell us what you have in mind. We will respond based on your inquiry.</p>
+          <p class="contact-line">Contact us at <a href="mailto:AnyBody@ddgc.world">AnyBody@ddgc.world</a></p>
         </div>
       </div>
     </section>
@@ -359,26 +367,26 @@
     <section class="page" data-page="policy" aria-labelledby="policy-title">
       <div class="legal-page">
         <h1 class="page-kicker" id="policy-title">Policy</h1>
-        <p>We do not collect or store personal data beyond what you voluntarily send via contact forms. Any information shared will only be used to respond to your inquiry.</p>
+        <p>We do not collect or store personal data beyond what you voluntarily send by email through our <a href="#/contact" data-route="contact">Contact</a> page. Any information shared will only be used to respond to your inquiry.</p>
       </div>
     </section>
 
     <section class="page" data-page="terms" aria-labelledby="terms-title">
       <div class="legal-page">
-        <h1 class="page-kicker" id="terms-title">Terms.</h1>
-        <p>This website is for informational purposes about DDGC. All content reflects our visions and plans. Use of this site constitutes acceptance of these terms</p>
+        <h1 class="page-kicker" id="terms-title">Terms</h1>
+        <p>This website is for informational purposes about DDGC. All content reflects our visions and plans. Use of this site constitutes acceptance of these terms.</p>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
     <a href="#/" class="footer-brand" data-route="home">DDGC</a>
-    <nav class="footer-nav" aria-label="Footer navigation"><a href="#/about" data-route="about">About</a><a href="#/anybody" data-route="anybody">Projects</a><a href="#/policy" data-route="policy">Policy</a><a href="#/terms" data-route="terms">Terms</a><a href="#/contact" data-route="contact">Contact</a></nav>
+    <nav class="footer-nav" aria-label="Footer navigation"><a href="#/about" data-route="about">About</a><a href="#/projects" data-route="projects">Projects</a><a href="#/policy" data-route="policy">Policy</a><a href="#/terms" data-route="terms">Terms</a><a href="#/contact" data-route="contact">Contact</a></nav>
     <div class="footer-spacer"></div>
   </footer>
 </div>
 <script>
-  const titles={home:'DDGC | The Home of Everything',about:'About-DDGC',anybody:'AnyBody -DDGC',contact:'Contact-DDGC',policy:'Policy-DDGC',terms:'Terms-DDGC'};
+  const titles={home:'DDGC | The Home of Everything',about:'About-DDGC',anybody:'AnyBody -DDGC',projects:'Projects-DDGC',contact:'Contact-DDGC',policy:'Policy-DDGC',terms:'Terms-DDGC'};
   const pages=[...document.querySelectorAll('[data-page]')];
   function route(){
     let name=(location.hash.replace(/^#\//,'').split('/')[0]||'home').toLowerCase();
@@ -386,6 +394,10 @@
     pages.forEach(page=>page.classList.toggle('active',page.dataset.page===name));
     document.body.classList.toggle('home-route',name==='home');
     document.body.classList.toggle('about-route',name==='about');
+    document.body.classList.toggle('projects-route',name==='projects');
+    document.body.classList.toggle('contact-route',name==='contact');
+    document.body.classList.toggle('policy-route',name==='policy');
+    document.body.classList.toggle('terms-route',name==='terms');
     document.title=titles[name];
     window.scrollTo(0,0);
   }
@@ -400,21 +412,6 @@
       });
       if(!open){button.setAttribute('aria-expanded','true');panel.classList.add('open')}
     });
-  });
-  const somethingElse=document.getElementById('something-else');
-  const elseField=document.getElementById('else-field');
-  somethingElse.addEventListener('change',()=>{elseField.hidden=!somethingElse.checked});
-  document.getElementById('contact-form').addEventListener('submit',event=>{
-    event.preventDefault();
-    const form=event.currentTarget;
-    if(!form.reportValidity()) return;
-    const values=new FormData(form);
-    const inquiry=values.getAll('inquiry').join(', ')||'General inquiry';
-    const subject=encodeURIComponent('DDGC inquiry: '+inquiry);
-    const body=encodeURIComponent('Name: '+(values.get('name')||'')+'\nEmail: '+values.get('email')+'\nInquiry: '+inquiry+'\nPlease describe: '+(values.get('describe')||'')+'\n\n'+values.get('message'));
-    window.location.href='mailto:AnyBody@DDGC.world?subject='+subject+'&body='+body;
-    form.style.display='none';
-    document.getElementById('contact-success').classList.add('show');
   });
   route();
 </script>
