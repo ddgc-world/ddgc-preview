@@ -233,42 +233,8 @@
     }
     @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
   </style>
-<style>
-body.anybody-route .anybody-dg{display:none}
-body.anybody-route .anybody-closer{display:none}
-@media (max-width:760px){
-  body.anybody-route .site-header{display:block;position:relative;height:auto;padding:0 16px 0 10px}
-  body.anybody-route .brand-link{display:inline-block;width:min(58vw,280px);margin:calc(clamp(18px,4svh,34px) * -1) 0 0 0}
-  body.anybody-route .brand-link img{display:block;width:100%;height:auto}
-  body.anybody-route .desktop-anybody{display:block!important;position:absolute;top:max(10px,env(safe-area-inset-top));right:16px;margin:0;z-index:22;font-size:14px}
-  body.anybody-route .anybody-page{padding-top:6px}
-  body.anybody-route .page-kicker{font-size:clamp(32px,9.5vw,42px);font-weight:700;text-align:center;margin:0 0 8px}
-  body.anybody-route .page-sub{font-size:clamp(15px,4.4vw,18px);text-align:center;margin-bottom:18px}
-  body.anybody-route .page-sub strong{display:block;font-weight:700}
-  body.anybody-route .flowcharts{grid-template-columns:1fr 1fr;gap:8px;align-items:start;margin-bottom:6px}
-  body.anybody-route .anybody-dg{display:block;width:clamp(90px,28vw,130px);height:auto;margin:2px auto 24px}
-  body.anybody-route .nda-line{display:none}
-  body.anybody-route .anybody-contact{display:none}
-  body.anybody-route .anybody-lower{display:block}
-  body.anybody-route .accordion-button{justify-content:flex-start;gap:16px;padding:15px 2px;font-size:clamp(24px,7.4vw,30px);font-weight:400}
-  body.anybody-route .accordion-button .chevron{order:-1;width:24px;height:24px;flex:0 0 24px;transform:rotate(90deg)}
-  body.anybody-route .accordion-button[aria-expanded="true"] .chevron{transform:rotate(270deg)}
-  body.anybody-route .accordion-item{border-bottom:1px solid color-mix(in srgb,currentColor 22%,transparent)}
-  body.anybody-route .accordion-panel p{padding:4px 8px 26px;font-size:clamp(15px,4.4vw,18px);line-height:1.7;text-align:center}
-  body.anybody-route .accordion-panel ul{list-style-position:inside;padding:0;text-align:center}
-  body.anybody-route .accordion-panel li{font-size:clamp(15px,4.4vw,18px);line-height:1.7}
-  body.anybody-route .anybody-closer{display:block;text-align:center;margin:26px auto 0;max-width:94%}
-  body.anybody-route .anybody-closer p{font-size:clamp(15px,4.4vw,18px);line-height:1.7;margin:0 0 18px}
-  body.anybody-route .anybody-closer a{text-decoration:underline;font-weight:400}
-  body.anybody-route .site-footer{display:flex;flex-direction:column;align-items:center;gap:5px;padding:18px 10px calc(8px + env(safe-area-inset-bottom))}
-  body.anybody-route .footer-brand{font-size:14px;font-weight:700;text-decoration:underline;margin:0}
-  body.anybody-route .footer-nav{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 16px}
-  body.anybody-route .footer-nav a{font-size:14px;text-decoration:underline}
-  body.anybody-route .footer-spacer{display:none}
-}
-</style>
 </head>
-<body class="anybody-route">
+<body>
 <div class="site-shell">
   <header class="site-header">
     <a href="/ddgc-preview/" class="brand-link" aria-label="DDGC home"><img src="/ddgc-preview/assets/logo.png" alt="DDGC, Divine Dream Group of Companies"></a>
@@ -301,14 +267,14 @@ body.anybody-route .anybody-closer{display:none}
               <path d="M545 460 C525 490 465 505 415 520"/><path class="arrowhead" d="M404 523 l9 -10 l5 13 z"/>
               <text class="flow-label-strong" x="380" y="553">Profit</text>
               <path d="M380 573 L380 620"/><path class="arrowhead" d="M380 632 l-7 -13 h14 z"/>
-              <text class="flow-label-strong" x="380" y="660">55% to All Owners</text>
+              <text class="flow-label-strong" x="380" y="660">55% to owners</text>
             </svg>
           </figure>
           <figure class="flowchart-figure">
             <svg class="flowchart flowchart-secondary" viewBox="0 0 520 600" role="img" aria-label="AnyBody directs 55% to owners, divided among land owners, other asset owners, and company owners, then returned to the Pool">
               <text class="flow-label-strong" x="260" y="35">AnyBody</text>
               <path d="M260 58 L260 128"/><path class="arrowhead" d="M260 140 l-7 -13 h14 z"/>
-              <text class="flow-label-strong" x="260" y="172">55% to All Owners</text>
+              <text class="flow-label-strong" x="260" y="172">55% to owners</text>
               <path d="M235 193 C178 210 115 230 76 264"/><path class="arrowhead" d="M69 272 l3 -14 l10 10 z"/>
               <path d="M260 195 L260 264"/><path class="arrowhead" d="M260 276 l-7 -13 h14 z"/>
               <path d="M285 193 C342 210 405 230 444 264"/><path class="arrowhead" d="M451 272 l-13 -4 l10 -10 z"/>
@@ -320,35 +286,30 @@ body.anybody-route .anybody-closer{display:none}
             </svg>
           </figure>
         </div>
-        <img class="anybody-dg" src="/ddgc-preview/assets/dg-logo.png" alt="DDGC logo">
         <p class="nda-line">Specific operational details are not publicly available. They are disclosed directly under NDA.</p>
         <div class="anybody-lower">
           <div class="accordion" id="anybody-accordion">
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>Owners</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
-            <div class="accordion-panel"><p>Your land is just a land. Your company is just another company. In short your asset alone is fragile. One market difference, one bad season, one missed trend and they stop working.</p><p>In AnyBody nothing works alone.</p><p>Your asset doesn’t have to be perfect. It doesn’t have to be complete . It just have to exist.</p><p>Because in the AnyBody Pool, what your company lack the other company have surplus of it, and because of that nothing lacks anything. Your weakness is cover by the others strength. Your asset value no longer depends on what it can do but what everything together can do.</p><p>That means your returns don’t come from one asset’s performance, but from a combined system, that is structure to work in all case.</p><p>Your job is to own, our job is to make you benefit more than you will alone.</p></div></div>
+            <div class="accordion-panel"><div><p>Your land is just a land. Your company is just another company. In short your asset alone is fragile. One market difference, one bad season, one missed trend and they stop working. In AnyBody nothing works alone. Your asset doesn't have to be perfect. It doesn't have to be complete . It just has to exist. Because in the AnyBody Pool, what your company lack the other company have surplus of it, and because of that nothing lacks anything. Your weakness is covered by the others' strength. Your asset value no longer depends on what it can do but what everything together can do. That means your returns don't come from one asset's performance, but from a combined system, that is structure to work in all case. Your job is to own, our job is to make you benefit more than you will alone.</p></div></div>
           </div>
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>AnyBody Pool</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
-            <div class="accordion-panel"><p>It’s the first structure where land, companies, intellectual property, an other assets are pooled into one system, not to be managed separately but to function as a single diversified system.</p><p>It’s the first box in the diagram, in this box three things go:</p><ul><li>Land (from Landowners)</li><li>Companies (from Companies Owners)</li><li>Other Assets (from Other assets owners)</li></ul></div></div>
+            <div class="accordion-panel"><div><p>It's the first structure where land, companies, intellectual property, other assets are pooled into one system, not to be managed separately but to function as a single diversified system. It's the first box in the diagram, in this box three things go: Land (from Landowners) Companies (from Companies Owners) Other Assets (from Other assets owners)</p></div></div>
           </div>
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>Finance</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
-            <div class="accordion-panel"><p>Project funding comes directly from the collective partnership agreement that give AnyBody development rights, signed by all asset owners. We use this single, unified contract, not the individual land, companies or IP, as collateral to secure finance for projects.</p><p>Most importantly we use the synergy and connections in between all of the assets and make them work together to bring the best out of each other.</p></div></div>
+            <div class="accordion-panel"><div><p>Project funding comes directly from the collective partnership agreement that give AnyBody development rights, signed by all asset owners. We use this single, unified contract, not the individual land, companies or IP, as collateral to secure finance for projects. Most importantly we use the synergy and connections in between all of the assets and make them work together to bring the best out of each other.</p></div></div>
           </div>
           <div class="accordion-item">
             <button class="accordion-button" type="button" aria-expanded="false"><span>Projects</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
-            <div class="accordion-panel"><p>Projects are not predetermined.</p><p>After the pool is complete and finance is secured, we analyze the pool: all land, companies, and assets, their locations, capabilities and market conditions. We then calculate what’s going to be be most profitable development and strategic uses of the budget and leverages the global spread of the pool.</p><p>We don’t decide in advance because the best projects for the pool depends on what is in the pool. The pool decides through data, locations, and market demand.</p></div></div>
+            <div class="accordion-panel"><div><p>Projects are not predetermined. After the pool is complete and finance is secured, we analyze the pool: all land, companies, and assets, their locations, capabilities and market conditions. We then calculate what's going to be most profitable development and strategic uses of the budget and leverages the global spread of the pool. We don't decide in advance because the best projects for the pool depends on what is in the pool. The pool decides through data, locations, and market demand.</p></div></div>
           </div>
           <div class="accordion-item">
-            <button class="accordion-button" type="button" aria-expanded="false"><span>55% to All Owners</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
-            <div class="accordion-panel"><p>55% of all profits generated across all projects combined will be distributed annually, forever, to all asset owners in the pool. This will be proportional to the initial value of their assets when it was contributed to the pool.</p><p>You are paid from the success of the entire system, not just your individual asset. the strength of the pool ensures this share is stable and growing, because your return is backed by dozens of assets, not one.</p></div></div>
+            <button class="accordion-button" type="button" aria-expanded="false"><span>55% to owners</span><svg class="chevron" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 3.5 L11.5 9 L6 14.5"/></svg></button>
+            <div class="accordion-panel"><div><p>55% of all profits generated across all projects combined will be distributed annually, forever, to all asset owners in the pool. This will be proportional to the initial value of their assets when it was contributed to the pool. You are paid from the success of the entire system, not just your individual asset. the strength of the pool ensures this share is stable and growing, because your return is backed by dozens of assets, not one.</p></div></div>
           </div>
           </div>
-          <div class="anybody-closer">
-          <p>Specific operational details are not publicly available. They are disclosed directly under NDA.</p>
-          <p>Fore more information about AnyBody Fill out the <a href="/ddgc-preview/contact/">contact</a> form, and we&rsquo;ll get back to you as soon as possible</p>
-        </div>
           <p class="anybody-contact">For more information about AnyBody, <a href="/ddgc-preview/contact/">contact us</a> and we'll get back to you as soon as possible.</p>
         </div>
       </div>
