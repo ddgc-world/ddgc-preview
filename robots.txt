@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ddgc-world.github.io/ddgc-preview/sitemap.xml
