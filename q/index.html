@@ -811,11 +811,11 @@
     </div>
 </div>
 
-<!-- mqtt.js (UMD), public MQTT-over-WebSocket client, exposed as window.mqtt -->
+<!-- mqtt.js (UMD) — public MQTT-over-WebSocket client, exposed as window.mqtt -->
 <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
 
 <script>
-    // --- Config ------------------------------------------------
+    // ─── Config ────────────────────────────────────────────────
     const FILE_TYPES = {
         html: { name: 'HTML', ext: '.html' },
         css: { name: 'CSS', ext: '.css' },
@@ -823,7 +823,7 @@
         json: { name: 'JSON', ext: '.json' }
     };
 
-    // --- Themes ------------------------------------------------
+    // ─── Themes ─────────────────────────────────────────────────
     const THEMES = {
         dark: {
             '--base-bg': '#000000',
@@ -877,7 +877,7 @@
         }
     };
 
-    // --- State -------------------------------------------------
+    // ─── State ─────────────────────────────────────────────────
     let apps = JSON.parse(localStorage.getItem('q-apps') || '[]');
     let orbitalApps = JSON.parse(localStorage.getItem('q-orbital') || '[]');
     let currentEditingApp = null;
@@ -886,8 +886,8 @@
     let fileTabs = [];
     let activeTabId = null;
 
-    // --- Cloud Sync (MQTT-over-WebSocket) ----------------------
-    // Syncs published apps across ALL devices, anyone, anywhere,
+    // ─── Cloud Sync (MQTT-over-WebSocket) ───────────────────────
+    // Syncs published apps across ALL devices — anyone, anywhere —
     // using a free public MQTT broker. No signup, no server to host.
     //
     //   publish  -> broadcasts the full app to every device
@@ -903,7 +903,7 @@
     const QOS_SYNC_TOPIC = 'qos/v1/apps';
     // Chunked transfer: payloads larger than this are split into multiple
     // MQTT messages and reassembled on the receiver. This removes the
-    // file-size limit, large apps just work.
+    // file-size limit — large apps just work.
     const QOS_CHUNK_SIZE = 32 * 1024; // 32KB per MQTT message
 
     const QOS_SYNC = {
@@ -916,7 +916,7 @@
         connect() {
             if (this.client) return;
             if (typeof window.mqtt === 'undefined') {
-                console.warn('[Q OS sync] mqtt library not loaded, cloud sync disabled');
+                console.warn('[Q OS sync] mqtt library not loaded — cloud sync disabled');
                 return;
             }
             try {
@@ -938,7 +938,7 @@
                 // Announce all our local apps so new peers learn about them.
                 this._announceAll();
                 // Ask other devices to re-announce their apps (so we get
-                // apps that were published before we came online, MQTT
+                // apps that were published before we came online — MQTT
                 // qos:0 doesn't retain messages, so this handshake is how
                 // late joiners catch up).
                 this._publish({ type: 'sync_request', from: this.myClientId });
@@ -960,7 +960,7 @@
                     this.client.publish(QOS_SYNC_TOPIC, str, { qos: 0 });
                     return;
                 }
-                // Large payload, split into chunks so the public broker can
+                // Large payload — split into chunks so the public broker can
                 // handle it. The receiver reassembles transparently.
                 const self = this;
                 const transferId = 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
@@ -1015,7 +1015,7 @@
                 } : null,
                 from: this.myClientId
             };
-            // No size limit, chunked transfer handles large apps.
+            // No size limit — chunked transfer handles large apps.
             this._publish(payload);
         },
 
@@ -1073,12 +1073,12 @@
             if (msg.type === 'publish') this._mergeRemote(msg);
             else if (msg.type === 'delete') this._applyDelete(msg.id);
             else if (msg.type === 'request') {
-                // Someone wants an app we have, send it to them.
+                // Someone wants an app we have — send it to them.
                 const local = apps.find(a => a.id === msg.id);
                 if (local) this.broadcastPublish(local);
             }
             else if (msg.type === 'sync_request') {
-                // A new device came online, re-announce all our apps so
+                // A new device came online — re-announce all our apps so
                 // they can catch up on apps published before they joined.
                 this._announceAll();
             }
@@ -1163,7 +1163,7 @@
         }
     };
 
-    // --- Init --------------------------------------------------
+    // ─── Init ─────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
         initOrbit();
         loadApps();
@@ -1187,7 +1187,7 @@
                     openPublishedApp(openAppId);
                 }, 500);
             } else {
-                // App isn't on this device, ask other devices for it
+                // App isn't on this device — ask other devices for it
                 // via cloud sync, and open it the moment it arrives.
                 QOS_SYNC.requestApp(openAppId);
             }
@@ -1252,7 +1252,7 @@
         }
     }
 
-    // --- Orbit System ------------------------------------------
+    // ─── Orbit System ───────────────────────────────────────────
     function initOrbit() {
         const container = document.getElementById('orbital-paths');
         container.innerHTML = '';
@@ -1385,7 +1385,7 @@
         updateShareDropdown();
     }
 
-    // --- App Store View ----------------------------------------
+    // ─── App Store View ─────────────────────────────────────────
     function showAppStore() {
         const grid = document.getElementById('appstore-grid-container');
         grid.innerHTML = '';
@@ -1433,7 +1433,7 @@
         QOS_SYNC.broadcastDelete(id);
     }
 
-    // --- Editor & Tabs -----------------------------------------
+    // ─── Editor & Tabs ─────────────────────────────────────────
     function openEditor(appId = null) {
         currentEditingApp = appId;
         appIcon = null;
@@ -1599,7 +1599,7 @@
         }
     }
 
-    // --- Preview Dropdown & Modes ------------------------------
+    // ─── Preview Dropdown & Modes ──────────────────────────────
     function togglePreviewDropdown(e) {
         e.stopPropagation();
         document.getElementById('preview-dropdown').classList.toggle('open');
@@ -1641,7 +1641,7 @@
         buildPreview();
     }
 
-    // --- Floating Preview (Auto-sized) -------------------------
+    // ─── Floating Preview (Auto-sized) ────────────────────────
     let floatDevice = 'desktop';
 
     function openFloatPreview(device) {
@@ -1728,7 +1728,7 @@
         win.style.left = Math.max(20, (window.innerWidth - (fw + border)) / 2) + 'px';
     }
 
-    // --- Side Panel Device Controls ----------------------------
+    // ─── Side Panel Device Controls ────────────────────────────
     function setDevice(device) {
         const panel = document.getElementById('preview-panel');
         panel.setAttribute('data-device', device);
@@ -2048,4 +2048,5 @@
 </script>
 
 </body>
+</html>
 </html>
