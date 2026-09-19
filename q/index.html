@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Q OS - Shareable Links</title>
+    <style>
+        :root {
+            /* Midnight Theme (Default) */
+            --base-bg: #000000;
+            --base-surface: #0a0a0a;
+            --base-surface-light: #141414;
+            --base-border: #1f1f1f;
+            --base-text: #ffffff;
+            --base-text-secondary: rgba(255,255,255,0.6);
+            --base-accent: #e70012;
+            --base-accent-text: #ffffff;
+            --base-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+            --base-radius: 12px;
+            --sidebar-width: 260px;
+            --preview-width: 350px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        #q-os-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--base-bg);
+            color: var(--base-text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            overflow: hidden;
+            z-index: 9999;
+        }
+
+        /* Background */
+        .background {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--base-bg);
+            z-index: -2;
+            pointer-events: none;
+        }
+        .background-grid {
+            display: none;
+        }
+
+        /* Central Q */
+        #central-q {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px; height: 0px;
+            background: var(--base-accent);
+            color: var(--base-accent-text);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 10;
+            transition: transform 0.3s, box-shadow 0.3s;
+            font-size: 60px; font-weight: 300; 
+            font-family: 'Verdana'; 
+            font-style: italic; 
+            box-shadow: 0 0 40px var(--base-accent);
+            text-transform: uppercase;
+        }
+        #central-q:hover { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 60px var(--base-accent); }
+
+        /* Orbital Apps */
+        .orbital-app {
+            position: fixed; 
+            width: 60px; height: 60px;
+            background: rgba(10, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            border: none;
+            border-radius: 16px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: box-shadow 0.2s, background 0.2s; 
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            z-index: 5;
+            top: 0; left: 0;
+            transform: translate(-50%, -50%); 
+            pointer-events: auto;
+        }        .orbital-app:hover {
+            box-shadow: 0 0 25px rgba(231, 0, 18, 0.4);
+            z-index: 20;
+            background: rgba(20, 0, 0, 0.8);
+        }
+        .app-initial {
+            width: 30px; height: 30px; background: var(--base-accent);
+            color: var(--base-accent-text); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 14px; margin-bottom: 6px;
+            overflow: hidden;
+        }
+        .app-initial img { width: 100%; height: 100%; object-fit: cover; }
+        .app-name {
+            font-size: 10px; font-weight: 600; color: var(--base-text-secondary);
+            text-align: center; max-width: 55px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* Orbit Paths */
+        #orbital-paths {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0; height: 0; 
+            z-index: 0;
+        }
+        .orbit-path {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); border-radius: 50%;
+            border: 1px dashed rgba(255,255,255,0.05);
+            pointer-events: none; z-index: -1;
+            display: none;
+        }
+        
+        #scribble-path {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none; z-index: -1;
+            fill: none;
+            stroke: rgba(255,255,255,0.08);
+            stroke-width: 1.5;
+            stroke-dasharray: 6 8;
+        }
+        /* Global Controls */
+        .global-controls {
+            position: fixed; bottom: 30px; right: 30px;
+            display: flex; gap: 12px; z-index: 100;
+        }
+        .global-btn {
+            width: 50px; height: 50px; background: rgba(10, 0, 0, 0.6);
+            backdrop-filter: blur(12px);
+            border: none; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s;
+            color: var(--base-text); font-size: 12px; font-weight: 700;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .global-btn:hover { transform: translateY(-3px); box-shadow: 0 0 20px rgba(231, 0, 18, 0.3); color: #ff2a36; }
+
+        /* Editor Container */
+        #editor-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--base-bg);
+            backdrop-filter: blur(10px);
+            z-index: 200; display: none; 
+            flex-direction: column;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #editor-container.active { display: flex; opacity: 1; }
+
+        /* Editor Header */
+        .editor-header {
+            height: 50px; background: var(--base-surface);
+            border-bottom: 1px solid var(--base-border);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px; flex-shrink: 0;
+        }
+        .editor-title { font-size: 16px; font-weight: 700; color: var(--base-accent); }
+        .editor-controls { display: flex; gap: 12px; align-items: center; }
+        .editor-btn {
+            padding: 6px 14px; background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            border: none; color: var(--base-text);
+            border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px;
+            transition: 0.2s; font-family: inherit;
+        }
+        .editor-btn:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+        .editor-btn.primary { background: rgba(231, 0, 18, 0.8); color: #fff; border: none; box-shadow: 0 4px 15px rgba(231, 0, 18, 0.3); }
+        .editor-btn.primary:hover { background: #e70012; box-shadow: 0 6px 20px rgba(231, 0, 18, 0.5); }
+        .editor-btn.danger { color: #ff5f57; }
+        .editor-btn.danger:hover { background: rgba(255, 95, 87, 0.15); }
+
+        /* Editor Layout */
+        .editor-content { display: flex; flex: 1; overflow: hidden; height: 100%; width: 100%; position: relative;}
+
+        /* Sidebar Wrapper */
+        .sidebar-wrapper {
+            width: 0; 
+            min-width: 0;
+            height: 100%;
+            background: rgba(5, 0, 0, 0.85);
+            backdrop-filter: blur(20px);
+            border-right: none;
+            transition: none;
+            z-index: 25;
+            overflow: hidden;
+            display: flex;
+        }
+        .sidebar-wrapper.visible { 
+            width: var(--sidebar-width); 
+            border-right: none;
+        }
+        
+        .settings-panel {
+            width: var(--sidebar-width);
+            min-width: var(--sidebar-width);
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 5px; 
+        }
+
+        /* Code Area */
+        .code-editor-area {
+            flex: 1; 
+            display: flex; flex-direction: column;
+            background: var(--base-bg); overflow: hidden;
+            height: 100%;
+            min-width: 0;
+            position: relative;
+        }
+
+        /* Collapsible Sections */
+        .settings-section { border-bottom: 1px solid var(--base-border); }
+        .section-header {
+            padding: 14px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+            user-select: none; transition: background 0.2s;
+        }
+        .section-header:hover { background: rgba(255,255,255,0.03); }
+        .section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
+        .chevron { transition: transform 0.3s ease; font-size: 10px; color: var(--base-text-secondary); }
+        .chevron.open { transform: rotate(180deg); }
+
+        .section-body {
+            max-height: 0; overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            padding: 0 16px;
+        }
+        .section-body.open { max-height: 600px; padding: 0 16px 16px; }
+
+        .input-group { margin-bottom: 16px; }
+        .input-label { display: block; font-size: 10px; font-weight: 600; color: var(--base-text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px; }
+        input[type="text"], select, textarea {
+            width: 100%; padding: 8px 10px; background: rgba(0, 0, 0, 0.5);
+            border: none; border-radius: 8px;
+            color: var(--base-text); font-size: 12px; transition: 0.2s; font-family: inherit;
+        }
+        input[type="text"]:focus, select:focus, textarea:focus { box-shadow: 0 0 10px rgba(231, 0, 18, 0.3); outline: none; }
+
+        .icon-upload-area {
+            width: 100%; height: 80px; background: var(--base-bg);
+            border: 2px dashed var(--base-border); border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; overflow: hidden; position: relative;
+        }
+        .icon-upload-area:hover { border-color: var(--base-accent); }
+        .icon-preview { width: 100%; height: 100%; object-fit: cover; position: absolute; top:0; left:0; display: none; }
+        .icon-upload-text { font-size: 10px; color: #666; z-index: 1; pointer-events: none;}
+
+        /* Tabs */
+        .tabs-row { display: flex; gap: 10px; margin-bottom: 0; padding: 0 10px; height: 36px; align-items: center; flex-shrink: 0; background: rgba(5, 0, 0, 0.8); backdrop-filter: blur(15px); border-bottom: none; }
+        .editor-tabs { display: flex; gap: 4px; flex: 1; overflow-x: auto; padding-top: 4px; scrollbar-width: none;}
+        .editor-tabs::-webkit-scrollbar { display: none; }
+        
+        .editor-tab { 
+            padding: 5px 10px; background: transparent; border: none; 
+            color: var(--base-text-secondary); font-size: 11px; font-weight: 500; 
+            cursor: pointer; border-radius: 6px; transition: 0.2s; 
+            white-space: nowrap; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+        }
+        .editor-tab.active { background: rgba(231, 0, 18, 0.15); color: #ff2a36; }
+        .editor-tab:hover:not(.active) { background: rgba(255,255,255,0.05); }
+        .tab-close { font-size: 14px; opacity: 0.6; cursor: pointer; margin-left: 4px; line-height: 1; display: flex; align-items: center; }
+        .tab-close:hover { opacity: 1; color: #ff5f57; }
+
+        .file-badge {
+            background: var(--base-surface-light);
+            padding: 1px 4px; border-radius: 3px; font-size: 9px; font-weight: 700;
+            text-transform: uppercase; color: var(--base-text-secondary);
+        }
+
+        .add-file-wrapper { position: relative; flex-shrink: 0; }
+        .add-file-btn {
+            width: 26px; height: 26px; background: var(--base-bg);
+            border: 1px dashed var(--base-border); border-radius: 4px;
+            color: var(--base-text-secondary); display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 16px; transition: 0.2s; 
+        }
+        .add-file-btn:hover { border-color: var(--base-accent); color: var(--base-accent); }
+
+        /* Editor Wrapper */
+        .code-editor-wrapper { flex: 1; display: flex; flex-direction: column; padding: 0; overflow: hidden; position: relative; }
+        .code-editor { 
+            flex: 1; 
+            background: rgba(0, 0, 0, 0.9); 
+            border: none; 
+            padding: 15px; 
+            color: var(--base-text); 
+            font-family: 'Consolas', monospace; 
+            font-size: 13px; line-height: 1.5; 
+            resize: none; outline: none; width: 100%; height: 100%;
+            border-bottom: none;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(231, 0, 18, 0.3) transparent;
+        }
+        .code-editor:hover { scrollbar-color: var(--base-border) transparent; }
+        .code-editor::-webkit-scrollbar { width: 8px; }
+        .code-editor::-webkit-scrollbar-track { background: transparent; }
+        .code-editor::-webkit-scrollbar-thumb { background-color: transparent; border-radius: 4px; }
+        .code-editor:hover::-webkit-scrollbar-thumb { background-color: var(--base-border); }
+
+        /* Preview Panel */
+        .preview-panel {
+            width: 0; 
+            min-width: 0;
+            background: #000;
+            border-left: none;
+            display: flex; flex-direction: column; overflow: hidden;
+            flex-shrink: 0; 
+            transition: none;
+            position: relative; z-index: 25;
+        }
+        .preview-panel.visible { width: var(--preview-width); }
+
+        .preview-header { height: 35px; background: var(--base-surface); border-bottom: 1px solid var(--base-border); display: flex; align-items: center; justify-content: space-between; padding: 0 10px; flex-shrink: 0;}
+        .device-options { display: flex; gap: 4px; background: var(--base-bg); padding: 2px; border-radius: 4px; }
+        .device-btn { padding: 2px 6px; border: none; background: transparent; color: var(--base-text-secondary); font-size: 10px; cursor: pointer; border-radius: 3px; transition: 0.2s; }
+        .device-btn:hover { color: var(--base-text); }
+        .device-btn.active { background: var(--base-surface-light); color: var(--base-accent); }
+
+        .preview-frame-container { 
+            flex: 1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: var(--base-bg); 
+            overflow: hidden; 
+            position: relative; 
+            padding: 20px;
+        }
+
+        /* Fullscreen Mode Overrides */
+        .editor-content.preview-fullscreen .sidebar-wrapper,
+        .editor-content.preview-fullscreen .code-editor-area,
+        .editor-content.preview-fullscreen .resizer {
+            display: none !important;
+        }
+        .editor-content.preview-fullscreen .preview-panel {
+            width: 100% !important;
+            border: none !important;
+        }
+
+        /* Native Fullscreen Mode Overrides */
+        .editor-content.preview-native-fullscreen .sidebar-wrapper,
+        .editor-content.preview-native-fullscreen .code-editor-area,
+        .editor-content.preview-native-fullscreen .resizer {
+            display: none !important;
+        }
+        .editor-content.preview-native-fullscreen .preview-panel {
+            width: 100% !important;
+            border: none !important;
+        }
+        .editor-content.preview-native-fullscreen #app-preview-frame {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            border: none !important;
+            border-radius: 0 !important;
+            aspect-ratio: unset !important;
+        }
+        .editor-content.preview-native-fullscreen .preview-frame-container { padding: 0 !important; }
+        .editor-content.preview-native-fullscreen .preview-header {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 50;
+            background: rgba(18, 18, 24, 0.85) !important;
+            backdrop-filter: blur(8px); opacity: 0; transition: opacity 0.3s ease;
+        }
+        .editor-content.preview-native-fullscreen:hover .preview-header { opacity: 1; }
+
+        #app-preview-frame { 
+            border: none; 
+            background: white; 
+            transition: transform 0.1s ease-out; 
+            width: 100%; 
+            height: 100%;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            aspect-ratio: var(--frame-ratio, 16/9);
+            max-height: 100%;
+        }
+        
+        .preview-panel[data-device="desktop"] #app-preview-frame,
+        .preview-panel[data-device="tablet"] #app-preview-frame,
+        .preview-panel[data-device="mobile"] #app-preview-frame { 
+            max-width: 95%;
+        }
+
+        /* Settings View */
+        .os-settings { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--base-bg); z-index: 300; display: none; padding: 30px; overflow-y: auto; }
+        .os-settings.active { display: block; }
+        .settings-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
+        .setting-card { background: rgba(10, 0, 0, 0.6); backdrop-filter: blur(20px); border-radius: 16px; padding: 20px; border: none; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+        .setting-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .close-view { position: fixed; top: 20px; right: 20px; width: 36px; height: 36px; background: var(--base-surface-light); border: 1px solid var(--base-border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--base-text); font-size: 18px; transition: 0.2s; z-index: 310; }
+        .close-view:hover { border-color: #ff5f57; color: #ff5f57; transform: rotate(90deg); }
+
+        /* App Drawer / App Store View */
+        .os-appstore { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--base-bg); z-index: 300; display: none; padding: 40px 30px; overflow-y: auto; }
+        .os-appstore.active { display: block; }
+        .appstore-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
+        .appstore-card {
+            background: rgba(10, 0, 0, 0.6); backdrop-filter: blur(20px); border: none; border-radius: 16px;
+            padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; position: relative; box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        .appstore-card:hover { box-shadow: 0 12px 40px rgba(231, 0, 18, 0.2); background: rgba(20, 0, 0, 0.8); transform: translateY(-3px); }
+        .appstore-icon {
+            width: 50px; height: 50px; background: var(--base-accent); color: var(--base-accent-text);
+            border-radius: 12px; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 20px; margin-bottom: 12px; overflow: hidden;
+        }
+        .appstore-icon img { width: 100%; height: 100%; object-fit: cover; }
+        .appstore-name { font-size: 13px; font-weight: 600; color: var(--base-text); text-align: center; margin-bottom: 12px; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .appstore-actions { display: flex; gap: 6px; width: 100%; }
+        .appstore-btn { flex: 1; padding: 4px 8px; font-size: 10px; border-radius: 4px; border: 1px solid var(--base-border); background: var(--base-bg); color: var(--base-text); cursor: pointer; text-align: center; font-weight: 600; }
+        .appstore-btn:hover { border-color: var(--base-accent); color: var(--base-accent); }
+        .appstore-btn.danger:hover { border-color: #ff5f57; color: #ff5f57; }
+
+        /* Link Generator Styles */
+        .link-generator {
+            margin-top: 10px;
+            padding: 10px;
+            background: var(--base-bg);
+            border: 1px solid var(--base-border);
+            border-radius: 6px;
+        }
+        .app-link-select { width: 100%; margin-bottom: 10px; }
+        .copy-link-btn {
+            width: 100%; background: var(--base-accent); color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: bold;
+        }
+        .copy-link-btn:hover { filter: brightness(1.1); }
+
+        /* File Dropdown */
+        .file-type-dropdown {
+            position: absolute; top: 35px; right: 0; background: var(--base-surface);
+            border: 1px solid var(--base-border); border-radius: 8px; padding: 6px; z-index: 100;
+            box-shadow: var(--base-shadow); min-width: 180px; display: none; max-height: 350px; overflow-y: auto;
+            scrollbar-width: none;
+        }
+        .file-type-dropdown::-webkit-scrollbar { display: none; }
+        .file-type-dropdown.open { display: block; }
+        .dropdown-section { margin-bottom: 6px; }
+        .dropdown-section-title { font-size: 9px; text-transform: uppercase; color: var(--base-text-secondary); padding: 4px 8px; font-weight: bold; }
+        .dropdown-item { padding: 6px 10px; font-size: 11px; color: var(--base-text); cursor: pointer; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; transition: 0.2s; }
+        .dropdown-item:hover { background: var(--base-surface-light); color: #fff; }
+        .dropdown-item span.ext { font-family: monospace; opacity: 0.6; font-size: 10px; }
+
+        /* Context Menu */
+        #context-menu {
+            position: fixed; background: rgba(5, 0, 0, 0.85); backdrop-filter: blur(20px); border: none;
+            border-radius: 12px; z-index: 400; display: none;
+            min-width: 160px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); overflow: hidden;
+        }
+        .context-item { padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12px; border-bottom: none; transition: 0.2s; }
+        .context-item:last-child { border: none; }
+        .context-item:hover { background: var(--base-surface-light); color: #fff; }
+        .context-item.danger { color: #ff5f57; }
+
+        /* App Runner (Overlay) */
+        #app-runner {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 500; display: none; flex-direction: column; backdrop-filter: blur(8px);
+        }
+        #app-runner.active { display: flex; }
+        .runner-header {
+            height: 50px; background: var(--base-surface); border-bottom: 1px solid var(--base-border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+        }
+        .runner-title { font-weight: bold; color: var(--base-text); }
+        .runner-frame { flex: 1; width: 100%; border: none; background: white; }
+
+        /* Sidebar File List */
+        .sidebar-file-list { display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+        .sidebar-file-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; color: var(--base-text-secondary); transition: 0.2s;
+        }
+        .sidebar-file-item:hover { background: rgba(255,255,255,0.05); color: var(--base-text); }
+        .sidebar-file-item.active { background: var(--base-surface-light); color: var(--base-accent); border: 1px solid var(--base-border); }
+        .file-name-part { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-delete-btn { color: var(--base-text-secondary); opacity: 0; padding: 2px 4px; font-size: 14px; transition: 0.2s; cursor: pointer; line-height: 1; }
+        .sidebar-file-item:hover .file-delete-btn { opacity: 1; }
+        .file-delete-btn:hover { color: #ff5f57; transform: scale(1.2); }
+
+        /* Resizer Handles */
+        .resizer {
+            width: 5px; height: 100%; background: transparent; cursor: col-resize; z-index: 35; position: relative; flex-shrink: 0; margin-left: -5px;
+        }
+        .resizer::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; transition: background 0.15s;
+        }
+        .resizer:hover::after, .resizer.active::after { background: var(--base-accent); }
+
+        /* Floating Preview Window */
+        #floating-preview-window {
+            position: fixed; background: rgba(5, 0, 0, 0.85); backdrop-filter: blur(20px); border: none;
+            border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); z-index: 10000; display: none; flex-direction: column; overflow: hidden;
+        }
+        #floating-preview-window.active { display: flex; }
+        .float-header {
+            height: 35px; background: rgba(10, 0, 0, 0.7); border-bottom: none;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 10px; cursor: grab; flex-shrink: 0;
+        }
+        .float-header:active { cursor: grabbing; }
+        .float-header-left { display: flex; align-items: center; gap: 8px; }
+        .float-header-title { font-size: 11px; font-weight: 600; color: var(--base-text-secondary); white-space: nowrap; }
+        .float-device-options { display: flex; gap: 2px; background: var(--base-bg); padding: 2px; border-radius: 4px; }
+        .float-device-btn { padding: 2px 5px; border: none; background: transparent; color: var(--base-text-secondary); font-size: 10px; cursor: pointer; border-radius: 3px; transition: 0.2s; }
+        .float-device-btn:hover { color: var(--base-text); }
+        .float-device-btn.active { background: var(--base-surface-light); color: var(--base-accent); }
+        .float-close-btn { background: none; border: none; color: var(--base-text-secondary); font-size: 16px; cursor: pointer; line-height: 1; }
+        .float-close-btn:hover { color: #ff5f57; }
+        .float-body { flex: 1; background: var(--base-bg); overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+        #floating-preview-frame { border: none; border-radius: 12px; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: block; transition: width 0.1s ease, height 0.1s ease; }
+        .float-resizer-corner { position: absolute; bottom: -2px; right: -2px; width: 20px; height: 20px; cursor: nwse-resize; z-index: 20; display: flex; align-items: center; justify-content: center; }
+        .float-resizer-corner::before { content: ''; width: 10px; height: 10px; border-right: 2px solid var(--base-border); border-bottom: 2px solid var(--base-border); transition: border-color 0.2s; }
+        .float-resizer-corner:hover::before { border-color: var(--base-accent); }
+
+        /* Preview Dropdown */
+        .preview-dropdown-wrapper { position: relative; }
+        .preview-dropdown { min-width: 220px; right: 0; top: 40px; }
+
+        /* Custom Theme Picker */
+        .theme-picker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .color-picker-group { display: flex; flex-direction: column; gap: 4px; }
+        .color-picker-group label { font-size: 9px; color: var(--base-text-secondary); text-transform: uppercase; }
+        .color-picker-group input[type="color"] { width: 100%; height: 30px; border: 1px solid var(--base-border); border-radius: 4px; background: var(--base-bg); cursor: pointer; padding: 2px; }
+        .apply-custom-theme-btn { grid-column: 1 / -1; margin-top: 5px; }
+        .radius-slider { width: 100%; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="q-os-container">
+        <div class="background"></div>
+        <div class="background-grid"></div>
+        
+        <div id="orbital-paths">
+            <div class="orbit-path" data-ring="0"></div>
+            <div class="orbit-path" data-ring="1"></div>
+            <div class="orbit-path" data-ring="2"></div>
+            <svg id="scribble-path"></svg>
+        </div>
+        
+        <div id="central-q">Q</div>
+        
+        <div class="global-controls">
+            <button class="global-btn" id="globalNewBtn" title="New App">+</button>
+            <button class="global-btn" id="globalFilesBtn" title="Apps">A</button>
+            <button class="global-btn" id="globalSettingsBtn" title="Settings">S</button>
+        </div>
+
+        <!-- Code Editor -->
+        <div id="editor-container">
+            <div class="editor-header">
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="editor-btn" id="editorBackBtn" style="padding: 6px 10px;">Back</button>
+                    <div class="editor-title" id="currentEditingApp">New App</div>
+                </div>
+                <div class="editor-controls">
+                    <button class="editor-btn" id="settingsSidebarToggle">Settings</button>
+                    
+                    <!-- Preview Dropdown Wrapper -->
+                    <div class="preview-dropdown-wrapper">
+                        <button class="editor-btn" id="previewMainBtn" style="padding: 6px 10px;">Preview</button>
+                        <div class="file-type-dropdown preview-dropdown" id="previewDropdown">
+                            <div class="dropdown-item" data-preview="side">Side Preview</div>
+                            <div class="dropdown-item" data-preview="full">Fullscreen Preview</div>
+                            <div class="dropdown-item" data-preview="float">Floating Preview</div>
+                        </div>
+                    </div>
+                    
+                    <button class="editor-btn primary" id="saveAppBtn">Save</button>
+                    <button class="editor-btn danger" id="deleteAppBtn" style="display:none;">Delete</button>
+                </div>
+            </div>
+            
+            <div class="editor-content">
+                <!-- Settings Sidebar -->
+                <div class="sidebar-wrapper" id="settingsSidebarWrapper">
+                    <div class="settings-panel">
+                        <div class="settings-section">
+                            <div class="section-header" data-target="sec-app">
+                                <span class="section-title"><span class="icon">🎛️</span> App Settings</span>
+                                <span class="chevron">▼</span>
+                            </div>
+                            <div class="section-body" id="sec-app">
+                                <div class="input-group">
+                                    <label class="input-label">App Name</label>
+                                    <input type="text" id="appNameInput" placeholder="My App">
+                                </div>
+                                <div class="input-group">
+                                    <label class="input-label">Icon (Click to Upload)</label>
+                                    <div class="icon-upload-area" id="iconUploadArea">
+                                        <img class="icon-preview" id="iconPreview">
+                                        <div class="icon-upload-text" id="iconUploadText">Tap to upload icon</div>
+                                        <input type="file" id="iconUploadInput" accept="image/*" style="display:none;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <div class="section-header" data-target="sec-share">
+                                <span class="section-title"><span class="icon">🔗</span> Share App</span>
+                                <span class="chevron">▼</span>
+                            </div>
+                            <div class="section-body" id="sec-share">
+                                <p style="font-size:11px; color:var(--base-text-secondary); margin-bottom:8px;">
+                                    Share a link to your apps.
+                                </p>
+                                <div class="input-group">
+                                    <label class="input-label">Select App to Share</label>
+                                    <select id="shareAppSelect" class="app-link-select">
+                                        <option value="">Select an app...</option>
+                                    </select>
+                                </div>
+                                <button class="copy-link-btn" id="copyLinkBtn" style="margin-bottom: 8px;">Copy Link</button>
+                                <button class="copy-link-btn" id="copyAllLinkBtn" style="background: var(--base-surface-light); color: var(--base-text);">Copy All Apps Link</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Editor Column -->
+                <div class="code-editor-area">
+                    <div class="tabs-row">
+                        <div class="editor-tabs" id="editorTabs"></div>
+                        <div class="add-file-wrapper">
+                            <button class="add-file-btn" id="addFileBtn">+</button>
+                            <div class="file-type-dropdown" id="fileTypeDropdown">
+                                <div class="dropdown-section">
+                                    <div class="dropdown-section-title">Code Files</div>
+                                    <div class="dropdown-item" data-type="html"><span>HTML</span><span class="ext">.html</span></div>
+                                    <div class="dropdown-item" data-type="css"><span>CSS</span><span class="ext">.css</span></div>
+                                    <div class="dropdown-item" data-type="js"><span>JavaScript</span><span class="ext">.js</span></div>
+                                    <div class="dropdown-item" data-type="jsx"><span>React JSX</span><span class="ext">.jsx</span></div>
+                                    <div class="dropdown-item" data-type="ts"><span>TypeScript</span><span class="ext">.ts</span></div>
+                                    <div class="dropdown-item" data-type="vue"><span>Vue SFC</span><span class="ext">.vue</span></div>
+                                    <div class="dropdown-item" data-type="py"><span>Python</span><span class="ext">.py</span></div>
+                                    <div class="dropdown-item" data-type="php"><span>PHP</span><span class="ext">.php</span></div>
+                                    <div class="dropdown-item" data-type="rb"><span>Ruby</span><span class="ext">.rb</span></div>
+                                </div>
+                                <div class="dropdown-section">
+                                    <div class="dropdown-section-title">Data Files</div>
+                                    <div class="dropdown-item" data-type="json"><span>JSON</span><span class="ext">.json</span></div>
+                                    <div class="dropdown-item" data-type="md"><span>Markdown</span><span class="ext">.md</span></div>
+                                    <div class="dropdown-item" data-type="txt"><span>Text</span><span class="ext">.txt</span></div>
+                                    <div class="dropdown-item" data-type="xml"><span>XML</span><span class="ext">.xml</span></div>
+                                    <div class="dropdown-item" data-type="yaml"><span>YAML</span><span class="ext">.yaml</span></div>
+                                    <div class="dropdown-item" data-type="csv"><span>CSV</span><span class="ext">.csv</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="code-editor-wrapper">
+                        <textarea class="code-editor" id="codeEditor" spellcheck="false"></textarea>
+                    </div>
+                </div>
+
+                <!-- Resizer for Preview -->
+                <div class="resizer" id="previewResizer"></div>
+
+                <!-- Preview Panel -->
+                <div class="preview-panel" id="previewPanel" data-device="desktop">
+                    <div class="preview-header">
+                        <div class="device-options">
+                            <button class="device-btn active" data-device="desktop" title="Desktop Preview">D</button>
+                            <button class="device-btn" data-device="tablet" title="Tablet Preview">T</button>
+                            <button class="device-btn" data-device="mobile" title="Mobile Preview">M</button>
+                            <button class="device-btn" id="floatPreviewBtn" title="Pop Out Preview">⤢</button>
+                        </div>
+                        <button class="editor-btn" id="closePreviewBtn" style="padding: 4px 8px; font-size: 10px;">Close</button>
+                    </div>
+                    <div class="preview-frame-container">
+                        <iframe id="app-preview-frame" title="App Preview"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- App Store View -->
+        <div class="os-appstore" id="appstoreView">
+            <h2 style="text-align:center; margin-bottom: 30px; font-size: 24px;">Apps</h2>
+            <div class="appstore-grid" id="appstoreGrid"></div>
+        </div>
+
+        <!-- Settings View -->
+        <div class="os-settings" id="settingsView">
+            <h2 style="text-align:center; margin-bottom: 30px; font-size: 24px;">Settings</h2>
+            <div class="settings-grid">
+                <div class="setting-card">
+                    <div class="setting-title"><span class="icon">🎨</span> Theme</div>
+                    <div class="input-group">
+                        <label class="input-label">Preset</label>
+                        <select id="themeSelect">
+                            <option value="midnight">Midnight</option>
+                            <option value="snow">Snow</option>
+                            <option value="sunset">Sunset</option>
+                            <option value="ocean">Ocean</option>
+                            <option value="forest">Forest</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div id="customThemeControls" style="display:none;">
+                        <div class="theme-picker-grid">
+                            <div class="color-picker-group"><label>Background</label><input type="color" id="cp-bg" value="#000000"></div>
+                            <div class="color-picker-group"><label>Surface</label><input type="color" id="cp-surface" value="#0a0a0a"></div>
+                            <div class="color-picker-group"><label>Text</label><input type="color" id="cp-text" value="#ffffff"></div>
+                            <div class="color-picker-group"><label>Accent</label><input type="color" id="cp-accent" value="#e70012"></div>
+                            <button class="editor-btn primary apply-custom-theme-btn" id="applyCustomThemeBtn">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <div class="setting-title"><span class="icon">🔗</span> Share Apps</div>
+                    <p style="font-size:12px; color:var(--base-text-secondary); margin-bottom:12px;">
+                        Share a link to all your apps.
+                    </p>
+                    <button class="copy-link-btn" id="copyAllLinkBtn2">Copy All Apps Link</button>
+                </div>
+
+                <div class="setting-card">
+                    <div class="setting-title"><span class="icon">☁️</span> Cloud Sync</div>
+                    <p style="font-size:12px; color:var(--base-text-secondary); margin-bottom:12px;">
+                        Sync your apps to the cloud to access them on other devices.
+                    </p>
+                    <div class="input-group">
+                        <label class="input-label">Email</label>
+                        <input type="text" id="cloudEmailInput" placeholder="you@email.com">
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Password</label>
+                        <input type="text" id="cloudPasswordInput" placeholder="Your password">
+                    </div>
+                    <button class="copy-link-btn" id="cloudSyncBtn">Sync Now</button>
+                    <div id="cloudStatus" style="font-size:11px; color:var(--base-text-secondary); margin-top:8px;"></div>
+                </div>
+
+                <div class="setting-card">
+                    <div class="setting-title"><span class="icon">💾</span> Storage</div>
+                    <p style="font-size:12px; color:var(--base-text-secondary); margin-bottom:12px;">
+                        Apps are saved locally in your browser.
+                    </p>
+                    <button class="editor-btn danger" id="clearStorageBtn">Clear All Data</button>
+                </div>
+            </div>
+        </div>
+        <button class="close-view" id="closeViewBtn" style="display:none;">✕</button>
+
+        <!-- Floating Preview Window -->
+        <div id="floating-preview-window">
+            <div class="float-header" id="floatHeader">
+                <div class="float-header-left">
+                    <span class="float-header-title">Preview</span>
+                    <div class="float-device-options">
+                        <button class="float-device-btn active" data-device="desktop" title="Desktop Preview">D</button>
+                        <button class="float-device-btn" data-device="tablet" title="Tablet Preview">T</button>
+                        <button class="float-device-btn" data-device="mobile" title="Mobile Preview">M</button>
+                    </div>
+                </div>
+                <button class="float-close-btn" id="floatCloseBtn">✕</button>
+            </div>
+            <div class="float-body">
+                <iframe id="floating-preview-frame" title="Floating Preview"></iframe>
+                <div class="float-resizer-corner" id="floatResizer"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="context-menu">
+        <div class="context-item" id="ctxEdit"><span class="icon">✏️</span> Edit App</div>
+        <div class="context-item" id="ctxRun"><span class="icon">▶️</span> Run App</div>
+        <div class="context-item danger" id="ctxDelete"><span class="icon">🗑️</span> Delete App</div>
+    </div>
+
+    <!-- App Runner -->
+    <div id="app-runner">
+        <div class="runner-header">
+            <div class="runner-title" id="runnerTitle">App</div>
+            <button class="editor-btn" id="runnerCloseBtn">Close</button>
+        </div>
+        <iframe class="runner-frame" id="runnerFrame"></iframe>
+    </div>
+
+    <!-- mqtt.js (UMD), public MQTT-over-WebSocket client, exposed as window.mqtt -->
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.js"></script>
+    <script>
+        window.Q_CONFIG = {
+            brokerUrl: 'wss://broker.emqx.io:8084/mqtt',
+            brokerProtocol: 'mqtt',
+            topicPrefix: 'q-os'
+        };
+    </script>
+    <script>
+        const appStore = {
+            apps: [], editingAppId: null, openTabs: [], activeTabId: null, files: {},
+            contextMenuAppId: null, currentDevice: 'desktop',
+            settingsOpen: false, sidebarOpen: false, previewOpen: false, previewMode: 'side'
+        };
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') text = String(text);
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        const themeColors = {
+            midnight: { baseBg: '#000000', baseSurface: '#0a0a0a', baseSurfaceLight: '#141414', baseBorder: '#1f1f1f', baseText: '#ffffff', baseTextSecondary: 'rgba(255,255,255,0.6)', baseAccent: '#e70012', baseAccentText: '#ffffff' },
+            snow: { baseBg: '#f5f7fa', baseSurface: '#ffffff', baseSurfaceLight: '#e8ecf1', baseBorder: '#d1d8e0', baseText: '#1a1d21', baseTextSecondary: 'rgba(26,29,33,0.6)', baseAccent: '#0a66ff', baseAccentText: '#ffffff' },
+            sunset: { baseBg: '#1a0f0a', baseSurface: '#2d1a0f', baseSurfaceLight: '#4a2b18', baseBorder: '#5c3520', baseText: '#ffe8d6', baseTextSecondary: 'rgba(255,232,214,0.6)', baseAccent: '#ff6b35', baseAccentText: '#ffffff' },
+            ocean: { baseBg: '#04121a', baseSurface: '#081e29', baseSurfaceLight: '#0f2f40', baseBorder: '#144054', baseText: '#e0f2ff', baseTextSecondary: 'rgba(224,242,255,0.6)', baseAccent: '#00b4d8', baseAccentText: '#ffffff' },
+            forest: { baseBg: '#0a150e', baseSurface: '#122418', baseSurfaceLight: '#1e3a26', baseBorder: '#2a4d34', baseText: '#e8f5e9', baseTextSecondary: 'rgba(232,245,233,0.6)', baseAccent: '#4caf50', baseAccentText: '#ffffff' },
+        };
+
+        let customTheme = { baseBg: '#000000', baseSurface: '#0a0a0a', baseSurfaceLight: '#141414', baseBorder: '#1f1f1f', baseText: '#ffffff', baseTextSecondary: 'rgba(255,255,255,0.6)', baseAccent: '#e70012', baseAccentText: '#ffffff' };
+
+        function hexToRgb(hex) {
+            hex = hex.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16), g = parseInt(hex.substr(2, 2), 16), b = parseInt(hex.substr(4, 2), 16);
+            return { r, g, b };
+        }
+        function getLuminance(hex) {
+            const { r, g, b } = hexToRgb(hex);
+            const rs = r / 255, gs = g / 255, bs = b / 255;
+            return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+        }
+        function getContrastText(hex) { return getLuminance(hex) > 0.5 ? '#000000' : '#ffffff'; }
+
+        function applyTheme(themeName) {
+            let theme = themeColors[themeName] || themeColors.midnight;
+            if (themeName === 'custom') theme = customTheme;
+
+            const root = document.documentElement;
+            root.style.setProperty('--base-bg', theme.baseBg);
+            root.style.setProperty('--base-surface', theme.baseSurface);
+            root.style.setProperty('--base-surface-light', theme.baseSurfaceLight);
+            root.style.setProperty('--base-border', theme.baseBorder);
+            root.style.setProperty('--base-text', theme.baseText);
+            root.style.setProperty('--base-text-secondary', theme.baseTextSecondary);
+            root.style.setProperty('--base-accent', theme.baseAccent);
+            root.style.setProperty('--base-accent-text', getContrastText(theme.baseAccent));
+            
+            localStorage.setItem('q-os-theme', themeName);
+        }
+
+        function initSettings() {
+            const themeSelect = document.getElementById('themeSelect');
+            const customControls = document.getElementById('customThemeControls');
+            const savedTheme = localStorage.getItem('q-os-theme') || 'midnight';
+            themeSelect.value = savedTheme;
+            customControls.style.display = savedTheme === 'custom' ? 'block' : 'none';
+
+            const savedCustom = localStorage.getItem('q-os-custom-theme');
+            if (savedCustom) { try { customTheme = JSON.parse(savedCustom); } catch(e) {} }
+
+            if (customTheme) {
+                document.getElementById('cp-bg').value = customTheme.baseBg;
+                document.getElementById('cp-surface').value = customTheme.baseSurface;
+                document.getElementById('cp-text').value = customTheme.baseText;
+                document.getElementById('cp-accent').value = customTheme.baseAccent;
+            }
+
+            applyTheme(savedTheme);
+
+            themeSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                customControls.style.display = val === 'custom' ? 'block' : 'none';
+                applyTheme(val);
+            });
+
+            document.getElementById('applyCustomThemeBtn').addEventListener('click', () => {
+                const bg = document.getElementById('cp-bg').value;
+                const surface = document.getElementById('cp-surface').value;
+                const text = document.getElementById('cp-text').value;
+                const accent = document.getElementById('cp-accent').value;
+                const lum = getLuminance(bg);
+                customTheme = {
+                    baseBg: bg, baseSurface: surface, baseSurfaceLight: surface,
+                    baseBorder: lum > 0.5 ? '#d1d8e0' : '#1f1f1f', baseText: text,
+                    baseTextSecondary: lum > 0.5 ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)',
+                    baseAccent: accent
+                };
+                localStorage.setItem('q-os-custom-theme', JSON.stringify(customTheme));
+                applyTheme('custom');
+            });
+        }
+
+        document.querySelectorAll('.section-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const targetId = header.getAttribute('data-target');
+                const body = document.getElementById(targetId);
+                const chevron = header.querySelector('.chevron');
+                const isOpen = body.classList.contains('open');
+                document.querySelectorAll('.section-body').forEach(b => b.classList.remove('open'));
+                document.querySelectorAll('.chevron').forEach(c => c.classList.remove('open'));
+                if (!isOpen) { body.classList.add('open'); chevron.classList.add('open'); }
+            });
+        });
+        const firstSection = document.querySelector('.section-header');
+        if (firstSection) {
+            document.getElementById(firstSection.getAttribute('data-target')).classList.add('open');
+            firstSection.querySelector('.chevron').classList.add('open');
+        }
+
+        document.getElementById('iconUploadArea').addEventListener('click', () => {
+            document.getElementById('iconUploadInput').click();
+        });
+        document.getElementById('iconUploadInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('iconPreview');
+                    preview.src = e.target.result; preview.style.display = 'block';
+                    document.getElementById('iconUploadText').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        const fileExtensions = { html: 'html', css: 'css', js: 'js', jsx: 'jsx', ts: 'ts', vue: 'vue', py: 'py', php: 'php', rb: 'rb', json: 'json', md: 'md', txt: 'txt', xml: 'xml', yaml: 'yaml', csv: 'csv' };
+
+        function openEditor(appId = null, forceSidebar = false) {
+            const container = document.getElementById('editor-container');
+            const osContainer = document.getElementById('q-os-container');
+            osContainer.style.pointerEvents = 'none';
+            osContainer.style.opacity = '0.5';
+            container.classList.add('active');
+            container.style.pointerEvents = 'auto';
+
+            appStore.editingAppId = appId;
+            appStore.openTabs = [];
+            appStore.activeTabId = null;
+            appStore.files = {};
+
+            const deleteBtn = document.getElementById('deleteAppBtn');
+            if (appId) {
+                const app = appStore.apps.find(a => a.id === appId);
+                if (app) {
+                    document.getElementById('currentEditingApp').textContent = app.name;
+                    document.getElementById('appNameInput').value = app.name;
+                    document.getElementById('iconUploadInput').value = '';
+                    const preview = document.getElementById('iconPreview');
+                    if (app.icon && app.icon.startsWith('data:')) {
+                        preview.src = app.icon; preview.style.display = 'block';
+                        document.getElementById('iconUploadText').style.display = 'none';
+                    } else {
+                        preview.style.display = 'none'; preview.src = '';
+                        document.getElementById('iconUploadText').style.display = 'block';
+                    }
+                    Object.assign(appStore.files, JSON.parse(JSON.stringify(app.files || {})));
+                    deleteBtn.style.display = 'inline-block';
+                }
+            } else {
+                document.getElementById('currentEditingApp').textContent = 'New App';
+                document.getElementById('appNameInput').value = '';
+                document.getElementById('iconUploadInput').value = '';
+                document.getElementById('iconPreview').style.display = 'none';
+                document.getElementById('iconPreview').src = '';
+                document.getElementById('iconUploadText').style.display = 'block';
+                appStore.files = {};
+                deleteBtn.style.display = 'none';
+            }
+
+            renderTabs(); updateCodeEditor(); togglePreviewPanel(false); toggleSettingsSidebar(forceSidebar); renderFileList();
+        }
+
+        function closeEditor() {
+            const container = document.getElementById('editor-container');
+            const osContainer = document.getElementById('q-os-container');
+            osContainer.style.pointerEvents = 'auto';
+            osContainer.style.opacity = '1';
+            container.classList.remove('active');
+            togglePreviewPanel(false);
+            document.querySelector('.editor-content').classList.remove('preview-fullscreen', 'preview-native-fullscreen');
+            document.getElementById('previewPanel').dataset.device = 'desktop';
+            document.querySelectorAll('.device-btn').forEach(b => b.classList.toggle('active', b.dataset.device === 'desktop'));
+            const floatWindow = document.getElementById('floating-preview-window');
+            floatWindow.classList.remove('active');
+            floatWindow.style.pointerEvents = 'none';
+            const floatFrame = document.getElementById('floating-preview-frame');
+            floatFrame.srcdoc = '';
+            appStore.editingAppId = null; appStore.openTabs = []; appStore.activeTabId = null; appStore.files = {};
+            renderOrbitalApps();
+        }
+
+        function getOrCreateFile(fileId) {
+            if (!appStore.files[fileId]) {
+                let ext = 'html';
+                if (fileId.includes('.')) ext = fileId.split('.').pop();
+                appStore.files[fileId] = { id: fileId, name: fileId, ext: ext, content: '' };
+            }
+            return appStore.files[fileId];
+        }
+
+        function renderTabs() {
+            const tabsContainer = document.getElementById('editorTabs');
+            tabsContainer.innerHTML = '';
+            appStore.openTabs.forEach(tab => {
+                const file = getOrCreateFile(tab.fileId);
+                const tabEl = document.createElement('div');
+                tabEl.className = 'editor-tab' + (tab.fileId === appStore.activeTabId ? ' active' : '');
+                tabEl.dataset.fileId = tab.fileId;
+
+                const badge = document.createElement('span');
+                badge.className = 'file-badge'; badge.textContent = file.ext.toUpperCase();
+                const nameSpan = document.createElement('span'); nameSpan.textContent = file.name;
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'tab-close'; closeBtn.textContent = '×';
+                closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(tab.fileId); };
+
+                tabEl.appendChild(badge); tabEl.appendChild(nameSpan); tabEl.appendChild(closeBtn);
+                tabEl.onclick = () => setActiveTab(tab.fileId);
+                tabsContainer.appendChild(tabEl);
+            });
+        }
+
+        function updateCodeEditor() {
+            const editor = document.getElementById('codeEditor');
+            if (appStore.activeTabId) {
+                const file = getOrCreateFile(appStore.activeTabId);
+                editor.value = file.content;
+                editor.disabled = false;
+                editor.placeholder = 'Write your code here...';
+            } else {
+                editor.value = ''; editor.disabled = true;
+                editor.placeholder = 'No file open. Click + to add a file.';
+            }
+        }
+
+        function addFileToTab(fileId) {
+            const existingTab = appStore.openTabs.find(t => t.fileId === fileId);
+            if (existingTab) setActiveTab(fileId);
+            else {
+                appStore.openTabs.push({ fileId: fileId });
+                setActiveTab(fileId);
+            }
+        }
+
+        function setActiveTab(fileId) {
+            if (appStore.activeTabId) {
+                const oldFile = getOrCreateFile(appStore.activeTabId);
+                oldFile.content = document.getElementById('codeEditor').value;
+            }
+            appStore.activeTabId = fileId;
+            renderTabs(); updateCodeEditor();
+        }
+
+        function closeTab(fileId) {
+            const idx = appStore.openTabs.findIndex(t => t.fileId === fileId);
+            if (idx === -1) return;
+            if (appStore.activeTabId === fileId) {
+                const oldFile = getOrCreateFile(fileId);
+                oldFile.content = document.getElementById('codeEditor').value;
+            }
+            appStore.openTabs.splice(idx, 1);
+            if (appStore.activeTabId === fileId) {
+                if (appStore.openTabs.length > 0) {
+                    const newActive = appStore.openTabs[Math.max(0, idx - 1)].fileId;
+                    appStore.activeTabId = newActive; renderTabs(); updateCodeEditor();
+                } else { appStore.activeTabId = null; renderTabs(); updateCodeEditor(); }
+            } else renderTabs();
+        }
+
+        function promptNewFileName(fileType) {
+            const ext = fileExtensions[fileType] || fileType;
+            const timestamp = Date.now();
+            const fileName = `file_${timestamp}.${ext}`;
+            const newFile = { id: fileName, name: fileName, ext: ext, content: '' };
+            appStore.files[fileName] = newFile;
+            addFileToTab(fileName); renderFileList();
+        }
+
+        function renderFileList() {
+            const existingList = document.querySelector('.sidebar-file-list');
+            if (existingList) existingList.remove();
+            const container = document.createElement('div');
+            container.className = 'sidebar-file-list';
+            const files = Object.values(appStore.files);
+            if (files.length > 0) {
+                const sectionBody = document.getElementById('sec-app');
+                const title = document.createElement('div');
+                title.className = 'input-label'; title.style.marginTop = '10px'; title.textContent = 'Files';
+                container.appendChild(title);
+                files.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'sidebar-file-item' + (file.id === appStore.activeTabId ? ' active' : '');
+                    const namePart = document.createElement('div'); namePart.className = 'file-name-part';
+                    const badge = document.createElement('span'); badge.className = 'file-badge'; badge.textContent = file.ext.toUpperCase();
+                    const nameSpan = document.createElement('span'); nameSpan.textContent = file.name;
+                    namePart.appendChild(badge); namePart.appendChild(nameSpan);
+                    const delBtn = document.createElement('span'); delBtn.className = 'file-delete-btn'; delBtn.textContent = '×'; delBtn.title = 'Delete file';
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete file "${file.name}"?`)) {
+                            delete appStore.files[file.id];
+                            closeTab(file.id); renderFileList();
+                        }
+                    };
+                    item.appendChild(namePart); item.appendChild(delBtn);
+                    item.onclick = () => addFileToTab(file.id);
+                    container.appendChild(item);
+                });
+                sectionBody.appendChild(container);
+            }
+        }
+
+        document.getElementById('codeEditor').addEventListener('input', (e) => {
+            if (appStore.activeTabId) {
+                const file = getOrCreateFile(appStore.activeTabId);
+                file.content = e.target.value;
+                if (appStore.previewOpen && (appStore.previewMode === 'side' || appStore.previewMode === 'full' || appStore.previewMode === 'float' || appStore.previewMode === 'native-full')) {
+                    updatePreview();
+                }
+            }
+        });
+
+        document.getElementById('addFileBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('fileTypeDropdown').classList.toggle('open');
+        });
+
+        document.getElementById('fileTypeDropdown').addEventListener('click', (e) => {
+            const item = e.target.closest('.dropdown-item');
+            if (item) {
+                promptNewFileName(item.dataset.type);
+                document.getElementById('fileTypeDropdown').classList.remove('open');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('fileTypeDropdown');
+            if (!e.target.closest('.add-file-wrapper')) dropdown.classList.remove('open');
+            const previewDropdown = document.getElementById('previewDropdown');
+            if (!e.target.closest('.preview-dropdown-wrapper')) previewDropdown.classList.remove('open');
+        });
+
+        document.getElementById('editorBackBtn').addEventListener('click', closeEditor);
+
+        function toggleSettingsSidebar(forceOpen = null) {
+            const wrapper = document.getElementById('settingsSidebarWrapper');
+            if (forceOpen !== null) appStore.sidebarOpen = forceOpen;
+            else appStore.sidebarOpen = !appStore.sidebarOpen;
+            wrapper.classList.toggle('visible', appStore.sidebarOpen);
+            document.getElementById('settingsSidebarToggle').textContent = appStore.sidebarOpen ? 'Hide Settings' : 'Settings';
+        }
+        document.getElementById('settingsSidebarToggle').addEventListener('click', () => toggleSettingsSidebar());
+
+        function generatePreviewHTML() {
+            const files = Object.values(appStore.files);
+            if (files.length === 0) return '<html><body><h3 style="font-family:sans-serif;color:#888;text-align:center;margin-top:50px;">No files. Add an HTML file to start.</h3></body></html>';
+
+            let htmlFile = files.find(f => f.ext === 'html');
+            if (!htmlFile) htmlFile = files[0];
+            let html = htmlFile.content;
+
+            const cssFiles = files.filter(f => f.ext === 'css');
+            if (cssFiles.length > 0) {
+                const cssContent = cssFiles.map(f => f.content).join('\n');
+                if (html.includes('</head>')) html = html.replace('</head>', `<style>${cssContent}</style></head>`);
+                else html = `<style>${cssContent}</style>` + html;
+            }
+            const jsFiles = files.filter(f => f.ext === 'js');
+            if (jsFiles.length > 0) {
+                const jsContent = jsFiles.map(f => f.content).join('\n');
+                if (html.includes('</body>')) html = html.replace('</body>', `<script>${jsContent}<\/script></body>`);
+                else html = html + `<script>${jsContent}<\/script>`;
+            }
+            return html;
+        }
+
+        function updatePreview() {
+            const html = generatePreviewHTML();
+            const floatWindow = document.getElementById('floating-preview-window');
+            const iframe = document.getElementById('app-preview-frame');
+            const floatFrame = document.getElementById('floating-preview-frame');
+
+            if (appStore.previewMode === 'float') {
+                floatWindow.classList.add('active'); floatWindow.style.pointerEvents = 'auto';
+                floatFrame.srcdoc = html;
+            } else {
+                floatWindow.classList.remove('active'); floatWindow.style.pointerEvents = 'none';
+                floatFrame.srcdoc = '';
+                iframe.srcdoc = html;
+            }
+        }
+
+        function togglePreviewPanel(show, mode = 'side') {
+            const panel = document.getElementById('previewPanel');
+            const resizer = document.getElementById('previewResizer');
+            const editorContent = document.querySelector('.editor-content');
+
+            appStore.previewOpen = show !== undefined ? show : !appStore.previewOpen;
+            if (show !== undefined && show) appStore.previewMode = mode;
+
+            if (appStore.previewMode === 'side') {
+                panel.classList.toggle('visible', appStore.previewOpen);
+                resizer.style.display = appStore.previewOpen ? 'block' : 'none';
+                editorContent.classList.remove('preview-fullscreen', 'preview-native-fullscreen');
+                if (appStore.previewOpen) updatePreview();
+            } else if (appStore.previewMode === 'full') {
+                panel.classList.remove('visible');
+                resizer.style.display = 'none';
+                editorContent.classList.add('preview-fullscreen');
+                editorContent.classList.remove('preview-native-fullscreen');
+                if (appStore.previewOpen) updatePreview();
+            } else if (appStore.previewMode === 'native-full') {
+                panel.classList.remove('visible');
+                resizer.style.display = 'none';
+                editorContent.classList.add('preview-native-fullscreen');
+                editorContent.classList.remove('preview-fullscreen');
+                if (appStore.previewOpen) updatePreview();
+            } else if (appStore.previewMode === 'float') {
+                panel.classList.remove('visible');
+                resizer.style.display = 'none';
+                editorContent.classList.remove('preview-fullscreen', 'preview-native-fullscreen');
+                if (appStore.previewOpen) {
+                    const floatWindow = document.getElementById('floating-preview-window');
+                    floatWindow.classList.add('active');
+                    floatWindow.style.pointerEvents = 'auto';
+                    floatWindow.style.width = '600px';
+                    floatWindow.style.height = '450px';
+                    floatWindow.style.left = 'calc(50% - 300px)';
+                    floatWindow.style.top = 'calc(50% - 225px)';
+                    updatePreview();
+                    sizeFloatFrame();
+                }
+            }
+        }
+
+        document.getElementById('previewMainBtn').addEventListener('click', () => {
+            togglePreviewPanel(true, appStore.previewMode === 'side' ? 'side' : appStore.previewMode);
+            if (appStore.previewMode === 'float') togglePreviewPanel(true, 'float');
+            else if (appStore.previewMode === 'full') togglePreviewPanel(true, 'full');
+            else togglePreviewPanel(true, 'side');
+        });
+
+        document.getElementById('previewDropdown').addEventListener('click', (e) => {
+            const item = e.target.closest('.dropdown-item');
+            if (item) {
+                const mode = item.dataset.preview;
+                document.getElementById('previewDropdown').classList.remove('open');
+                if (mode === 'side') togglePreviewPanel(true, 'side');
+                else if (mode === 'full') togglePreviewPanel(true, 'full');
+                else if (mode === 'float') togglePreviewPanel(true, 'float');
+                else if (mode === 'native') togglePreviewPanel(true, 'native-full');
+            }
+        });
+
+        document.getElementById('closePreviewBtn').addEventListener('click', () => {
+            const editorContent = document.querySelector('.editor-content');
+            if (editorContent.classList.contains('preview-fullscreen') || editorContent.classList.contains('preview-native-fullscreen')) {
+                editorContent.classList.remove('preview-fullscreen', 'preview-native-fullscreen');
+                document.getElementById('previewPanel').classList.remove('visible');
+                document.getElementById('previewResizer').style.display = 'none';
+                appStore.previewOpen = false; appStore.previewMode = 'side';
+                const panel = document.getElementById('previewPanel');
+                panel.classList.add('visible'); panel.style.display = 'none';
+                document.getElementById('previewResizer').style.display = 'none';
+                setTimeout(() => { panel.classList.remove('visible'); panel.style.display = ''; }, 10);
+            } else {
+                togglePreviewPanel(false);
+            }
+        });
+
+        document.querySelectorAll('.device-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                appStore.currentDevice = btn.dataset.device;
+                const panel = document.getElementById('previewPanel');
+                const iframe = document.getElementById('app-preview-frame');
+                const floatFrame = document.getElementById('floating-preview-frame');
+                panel.dataset.device = appStore.currentDevice;
+
+                let targetFrame = iframe;
+                if (appStore.previewMode === 'float') targetFrame = floatFrame;
+
+                if (appStore.currentDevice === 'desktop') {
+                    iframe.style.setProperty('--frame-ratio', '16/9');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.maxWidth = '95%';
+                    iframe.style.maxHeight = '100%';
+                    iframe.style.aspectRatio = '16/9';
+                } else if (appStore.currentDevice === 'tablet') {
+                    iframe.style.setProperty('--frame-ratio', '4/3');
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    iframe.style.maxWidth = '70%';
+                    iframe.style.maxHeight = '100%';
+                    iframe.style.aspectRatio = '4/3';
+                } else if (appStore.currentDevice === 'mobile') {
+                    iframe.style.setProperty('--frame-ratio', '9/16');
+                    iframe.style.width = 'auto';
+                    iframe.style.height = '100%';
+                    iframe.style.maxWidth = '95%';
+                    iframe.style.maxHeight = '100%';
+                    iframe.style.aspectRatio = '9/16';
+                }
+                if (appStore.previewMode === 'float') sizeFloatFrame();
+            });
+        });
+
+        document.getElementById('floatPreviewBtn').addEventListener('click', () => {
+            togglePreviewPanel(true, 'float');
+        });
+
+        const floatWindow = document.getElementById('floating-preview-window');
+        const floatHeader = document.getElementById('floatHeader');
+        const floatFrame = document.getElementById('floating-preview-frame');
+        const floatResizer = document.getElementById('floatResizer');
+
+        let floatDevice = 'desktop';
+
+        function sizeFloatFrame() {
+            const body = floatWindow.querySelector('.float-body');
+            const availableW = body.clientWidth - 20;
+            const availableH = body.clientHeight - 20;
+            let ratio, maxW = availableW, maxH = availableH;
+            if (floatDevice === 'desktop') { ratio = 16/9; }
+            else if (floatDevice === 'tablet') { ratio = 4/3; }
+            else { ratio = 9/16; maxW = availableW * 0.6; }
+
+            let w = maxW, h = w / ratio;
+            if (h > maxH) { h = maxH; w = h * ratio; }
+            floatFrame.style.width = w + 'px';
+            floatFrame.style.height = h + 'px';
+        }
+
+        document.querySelectorAll('.float-device-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.float-device-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                floatDevice = btn.dataset.device;
+                sizeFloatFrame();
+            });
+        });
+
+        document.getElementById('floatCloseBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            floatWindow.classList.remove('active');
+            floatWindow.style.pointerEvents = 'none';
+            floatFrame.srcdoc = '';
+            if (appStore.previewMode === 'float') {
+                appStore.previewOpen = false;
+                appStore.previewMode = 'side';
+            }
+        });
+
+        let isDraggingFloat = false, floatStartX, floatStartY, floatStartLeft, floatStartTop;
+        floatHeader.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.float-device-options') || e.target.closest('.float-close-btn')) return;
+            isDraggingFloat = true;
+            floatStartX = e.clientX; floatStartY = e.clientY;
+            floatStartLeft = floatWindow.offsetLeft; floatStartTop = floatWindow.offsetTop;
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingFloat) return;
+            const dx = e.clientX - floatStartX, dy = e.clientY - floatStartY;
+            let newLeft = floatStartLeft + dx, newTop = floatStartTop + dy;
+            newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - 100));
+            newTop = Math.max(0, Math.min(newTop, window.innerHeight - 50));
+            floatWindow.style.left = newLeft + 'px';
+            floatWindow.style.top = newTop + 'px';
+            floatWindow.style.right = 'auto'; floatWindow.style.bottom = 'auto';
+        });
+        document.addEventListener('mouseup', () => { isDraggingFloat = false; });
+
+        let isResizingFloat = false, floatResizeStartX, floatResizeStartY, floatResizeStartW, floatResizeStartH;
+        floatResizer.addEventListener('mousedown', (e) => {
+            isResizingFloat = true;
+            floatResizeStartX = e.clientX; floatResizeStartY = e.clientY;
+            floatResizeStartW = floatWindow.offsetWidth; floatResizeStartH = floatWindow.offsetHeight;
+            e.preventDefault(); e.stopPropagation();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizingFloat) return;
+            const dw = e.clientX - floatResizeStartX, dh = e.clientY - floatResizeStartY;
+            floatWindow.style.width = Math.max(300, floatResizeStartW + dw) + 'px';
+            floatWindow.style.height = Math.max(250, floatResizeStartH + dh) + 'px';
+            sizeFloatFrame();
+        });
+        document.addEventListener('mouseup', () => { isResizingFloat = false; });
+
+        const previewResizer = document.getElementById('previewResizer');
+        const previewPanel = document.getElementById('previewPanel');
+        let isResizingPreview = false;
+        previewResizer.addEventListener('mousedown', (e) => {
+            isResizingPreview = true;
+            previewResizer.classList.add('active');
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizingPreview) return;
+            const newWidth = window.innerWidth - e.clientX;
+            if (newWidth > 200 && newWidth < window.innerWidth - 400) {
+                document.documentElement.style.setProperty('--preview-width', newWidth + 'px');
+            }
+        });
+        document.addEventListener('mouseup', () => {
+            isResizingPreview = false;
+            previewResizer.classList.remove('active');
+        });
+
+        document.getElementById('saveAppBtn').addEventListener('click', () => {
+            if (appStore.activeTabId) {
+                const oldFile = getOrCreateFile(appStore.activeTabId);
+                oldFile.content = document.getElementById('codeEditor').value;
+            }
+            const appName = document.getElementById('appNameInput').value.trim() || 'Untitled App';
+            const iconPreview = document.getElementById('iconPreview');
+            const iconData = iconPreview.src && iconPreview.style.display !== 'none' ? iconPreview.src : null;
+
+            if (appStore.editingAppId) {
+                const app = appStore.apps.find(a => a.id === appStore.editingAppId);
+                if (app) {
+                    app.name = appName;
+                    if (iconData) app.icon = iconData;
+                    app.files = JSON.parse(JSON.stringify(appStore.files));
+                    app.updatedAt = Date.now();
+                    if (app.id === 'sample') { app.id = 'app_' + Date.now(); }
+                }
+            } else {
+                const newApp = {
+                    id: 'app_' + Date.now(),
+                    name: appName,
+                    icon: iconData || null,
+                    files: JSON.parse(JSON.stringify(appStore.files)),
+                    createdAt: Date.now(),
+                    updatedAt: Date.now()
+                };
+                appStore.apps.push(newApp);
+                appStore.editingAppId = newApp.id;
+            }
+            saveApps();
+            document.getElementById('currentEditingApp').textContent = appName;
+            document.getElementById('deleteAppBtn').style.display = 'inline-block';
+            populateShareDropdown();
+            const btn = document.getElementById('saveAppBtn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Saved!'; btn.style.background = '#4caf50';
+            setTimeout(() => { btn.textContent = originalText; btn.style.background = ''; }, 1500);
+        });
+
+        document.getElementById('deleteAppBtn').addEventListener('click', () => {
+            if (appStore.editingAppId && confirm('Delete this app?')) {
+                appStore.apps = appStore.apps.filter(a => a.id !== appStore.editingAppId);
+                saveApps(); closeEditor(); populateShareDropdown(); renderAppstore();
+            }
+        });
+
+        function saveApps() {
+            try { localStorage.setItem('q-os-apps', JSON.stringify(appStore.apps)); } catch (e) {}
+        }
+        function loadApps() {
+            try {
+                const saved = localStorage.getItem('q-os-apps');
+                if (saved) appStore.apps = JSON.parse(saved);
+            } catch (e) { appStore.apps = []; }
+            if (!appStore.apps || appStore.apps.length === 0) {
+                appStore.apps = [{
+                    id: 'sample', name: 'Welcome App',
+                    icon: null,
+                    files: {
+                        'index.html': { id: 'index.html', name: 'index.html', ext: 'html', content: '<!DOCTYPE html>\n<html>\n<head>\n<style>\nbody { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f0f0f0; margin: 0; }\nh1 { color: #e70012; }\n</style>\n</head>\n<body>\n<h1>Welcome to Q OS!</h1>\n</body>\n</html>' },
+                        'styles.css': { id: 'styles.css', name: 'styles.css', ext: 'css', content: '/* Your styles here */' }
+                    },
+                    createdAt: Date.now(), updatedAt: Date.now()
+                }];
+                saveApps();
+            }
+        }
+
+        function generateAppPreviewHTML(app) {
+            const files = Object.values(app.files || {});
+            if (files.length === 0) return '<html><body></body></html>';
+            let htmlFile = files.find(f => f.ext === 'html');
+            if (!htmlFile) htmlFile = files[0];
+            let html = htmlFile.content;
+            const cssFiles = files.filter(f => f.ext === 'css');
+            if (cssFiles.length > 0) {
+                const cssContent = cssFiles.map(f => f.content).join('\n');
+                if (html.includes('</head>')) html = html.replace('</head>', `<style>${cssContent}</style></head>`);
+                else html = `<style>${cssContent}</style>` + html;
+            }
+            const jsFiles = files.filter(f => f.ext === 'js');
+            if (jsFiles.length > 0) {
+                const jsContent = jsFiles.map(f => f.content).join('\n');
+                if (html.includes('</body>')) html = html.replace('</body>', `<script>${jsContent}<\/script></body>`);
+                else html = html + `<script>${jsContent}<\/script>`;
+            }
+            return html;
+        }
+
+        function runApp(appId) {
+            const app = appStore.apps.find(a => a.id === appId);
+            if (!app) return;
+            const html = generateAppPreviewHTML(app);
+            document.getElementById('runnerTitle').textContent = app.name;
+            document.getElementById('runnerFrame').srcdoc = html;
+            document.getElementById('app-runner').classList.add('active');
+        }
+
+        document.getElementById('runnerCloseBtn').addEventListener('click', () => {
+            document.getElementById('app-runner').classList.remove('active');
+            document.getElementById('runnerFrame').srcdoc = '';
+        });
+
+        function drawScribblePath() {
+            const svg = document.getElementById('scribble-path');
+            const W = window.innerWidth, H = window.innerHeight;
+            const centerX = 0, centerY = 0;
+            const isMobile = W < 768;
+            const baseR = isMobile ? Math.min(W, H) * 0.28 : Math.min(W, H) * 0.32;
+            const spacing = isMobile ? 70 : 95;
+            
+            let points = [];
+            const numPoints = 600;
+            const a = 1.5, b = 0.6;
+            
+            for (let i = 0; i <= numPoints; i++) {
+                const t = i / numPoints;
+                const theta = t * Math.PI * 2 * 5; 
+                const R = baseR + a * 40 * Math.sin(b * theta + 1.2) + spacing * (t - 0.5) * 1.8;
+                
+                const x = centerX + R * Math.cos(theta);
+                const y = centerY + R * Math.sin(theta) * 0.9; 
+                
+                points.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+            }
+            
+            const svgSize = Math.max(W, H) * 2;
+            svg.setAttribute('width', svgSize);
+            svg.setAttribute('height', svgSize);
+            svg.setAttribute('viewBox', `${-svgSize/2} ${-svgSize/2} ${svgSize} ${svgSize}`);
+            svg.innerHTML = `<polyline points="${points.join(' ')}" />`;
+            
+            return { points, baseR, spacing, numPoints, a, b };
+        }
+
+        let scribbleData = null;
+
+        function positionOrbitalApps() {
+            document.querySelectorAll('.orbital-app').forEach(el => el.remove());
+            
+            if (!scribbleData) scribbleData = drawScribblePath();
+            const { numPoints } = scribbleData;
+            const totalApps = appStore.apps.length;
+            const svg = document.getElementById('scribble-path');
+            const polyline = svg.querySelector('polyline');
+            if (!polyline || totalApps === 0) return;
+            
+            const pathLength = polyline.getTotalLength();
+            
+            appStore.apps.forEach((app, idx) => {
+                const t = totalApps === 1 ? 0.5 : (idx + 0.5) / totalApps;
+                const targetLen = t * pathLength;
+                
+                const pt = polyline.getPointAtLength(targetLen);
+                
+                const el = document.createElement('div');
+                el.className = 'orbital-app';
+                el.dataset.appId = app.id;
+                
+                const initialDiv = document.createElement('div');
+                initialDiv.className = 'app-initial';
+                if (app.icon && app.icon.startsWith('data:')) {
+                    const img = document.createElement('img');
+                    img.src = app.icon; img.alt = app.name;
+                    initialDiv.appendChild(img);
+                } else {
+                    initialDiv.textContent = escapeHtml(app.name.charAt(0).toUpperCase());
+                }
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'app-name';
+                nameDiv.textContent = app.name;
+                
+                el.appendChild(initialDiv);
+                el.appendChild(nameDiv);
+                
+                const svgRect = svg.getBoundingClientRect();
+                const svgCx = svgRect.left + svgRect.width / 2;
+                const svgCy = svgRect.top + svgRect.height / 2;
+                const viewBox = svg.viewBox.baseVal;
+                const scaleX = svgRect.width / viewBox.width;
+                const scaleY = svgRect.height / viewBox.height;
+                
+                const screenX = svgCx + pt.x * scaleX;
+                const screenY = svgCy + pt.y * scaleY;
+                
+                el.style.left = screenX + 'px';
+                el.style.top = screenY + 'px';
+                
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    runApp(app.id);
+                });
+                el.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContextMenu(e.clientX, e.clientY, app.id);
+                });
+                
+                document.getElementById('q-os-container').appendChild(el);
+            });
+        }
+
+        function renderOrbitalApps() { positionOrbitalApps(); }
+
+        function showContextMenu(x, y, appId) {
+            appStore.contextMenuAppId = appId;
+            const menu = document.getElementById('context-menu');
+            menu.style.display = 'block';
+            menu.style.left = Math.min(x, window.innerWidth - 170) + 'px';
+            menu.style.top = Math.min(y, window.innerHeight - 140) + 'px';
+        }
+        function hideContextMenu() { document.getElementById('context-menu').style.display = 'none'; }
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#context-menu')) hideContextMenu();
+        });
+
+        document.getElementById('ctxEdit').addEventListener('click', () => {
+            if (appStore.contextMenuAppId) { openEditor(appStore.contextMenuAppId); hideContextMenu(); }
+        });
+        document.getElementById('ctxRun').addEventListener('click', () => {
+            if (appStore.contextMenuAppId) { runApp(appStore.contextMenuAppId); hideContextMenu(); }
+        });
+        document.getElementById('ctxDelete').addEventListener('click', () => {
+            if (appStore.contextMenuAppId && confirm('Delete this app?')) {
+                appStore.apps = appStore.apps.filter(a => a.id !== appStore.contextMenuAppId);
+                saveApps(); renderOrbitalApps(); renderAppstore(); populateShareDropdown(); hideContextMenu();
+            }
+        });
+
+        document.getElementById('central-q').addEventListener('click', () => {
+            const allIcons = document.querySelectorAll('.orbital-app');
+            const visible = allIcons.length > 0 && allIcons[0].style.display !== 'none';
+            allIcons.forEach(icon => { icon.style.display = visible ? 'none' : 'flex'; });
+        });
+
+        document.getElementById('globalNewBtn').addEventListener('click', () => openEditor(null, true));
+        document.getElementById('globalFilesBtn').addEventListener('click', () => showView('appstore'));
+        document.getElementById('globalSettingsBtn').addEventListener('click', () => showView('settings'));
+
+        function showView(viewName) {
+            document.getElementById('appstoreView').classList.remove('active');
+            document.getElementById('settingsView').classList.remove('active');
+            document.getElementById('closeViewBtn').style.display = 'none';
+            appStore.settingsOpen = false;
+            if (viewName === 'appstore') {
+                renderAppstore();
+                document.getElementById('appstoreView').classList.add('active');
+                document.getElementById('closeViewBtn').style.display = 'flex';
+            } else if (viewName === 'settings') {
+                document.getElementById('settingsView').classList.add('active');
+                document.getElementById('closeViewBtn').style.display = 'flex';
+                appStore.settingsOpen = true;
+            }
+        }
+
+        document.getElementById('closeViewBtn').addEventListener('click', () => showView(null));
+
+        function renderAppstore() {
+            const grid = document.getElementById('appstoreGrid');
+            grid.innerHTML = '';
+            if (appStore.apps.length === 0) {
+                grid.innerHTML = '<p style="grid-column:1/-1;text-align:center;color:var(--base-text-secondary);">No apps yet. Create one with the + button.</p>';
+                return;
+            }
+            appStore.apps.forEach(app => {
+                const card = document.createElement('div');
+                card.className = 'appstore-card';
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'appstore-icon';
+                if (app.icon && app.icon.startsWith('data:')) {
+                    const img = document.createElement('img'); img.src = app.icon; iconDiv.appendChild(img);
+                } else { iconDiv.textContent = app.name.charAt(0).toUpperCase(); }
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'appstore-name'; nameDiv.textContent = app.name;
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'appstore-actions';
+                const openBtn = document.createElement('button'); openBtn.className = 'appstore-btn'; openBtn.textContent = 'Open';
+                openBtn.onclick = (e) => { e.stopPropagation(); showView(null); runApp(app.id); };
+                const editBtn = document.createElement('button'); editBtn.className = 'appstore-btn'; editBtn.textContent = 'Edit';
+                editBtn.onclick = (e) => { e.stopPropagation(); showView(null); openEditor(app.id); };
+                const delBtn = document.createElement('button'); delBtn.className = 'appstore-btn danger'; delBtn.textContent = 'Delete';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Delete "${app.name}"?`)) {
+                        appStore.apps = appStore.apps.filter(a => a.id !== app.id);
+                        saveApps(); renderAppstore(); renderOrbitalApps(); populateShareDropdown();
+                    }
+                };
+                actionsDiv.appendChild(openBtn); actionsDiv.appendChild(editBtn); actionsDiv.appendChild(delBtn);
+                card.appendChild(iconDiv); card.appendChild(nameDiv); card.appendChild(actionsDiv);
+                grid.appendChild(card);
+            });
+        }
+
+        function populateShareDropdown() {
+            const select = document.getElementById('shareAppSelect');
+            select.innerHTML = '<option value="">Select an app...</option>';
+            appStore.apps.forEach(app => {
+                const opt = document.createElement('option');
+                opt.value = app.id; opt.textContent = app.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function encodeAppData(app) {
+            const data = { name: app.name, icon: app.icon, files: app.files };
+            const json = JSON.stringify(data);
+            return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function encodeAllApps() {
+            const data = appStore.apps.map(app => ({ name: app.name, icon: app.icon, files: app.files }));
+            const json = JSON.stringify(data);
+            return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        document.getElementById('copyLinkBtn').addEventListener('click', () => {
+            const appId = document.getElementById('shareAppSelect').value;
+            if (!appId) { alert('Please select an app first'); return; }
+            const app = appStore.apps.find(a => a.id === appId);
+            if (!app) return;
+            const encoded = encodeAppData(app);
+            const url = `${window.location.origin}${window.location.pathname}#app=${encoded}`;
+            copyToClipboard(url, 'App link copied!');
+        });
+
+        function copyAllAppsLink() {
+            if (appStore.apps.length === 0) { alert('No apps to share'); return; }
+            const encoded = encodeAllApps();
+            const url = `${window.location.origin}${window.location.pathname}#apps=${encoded}`;
+            copyToClipboard(url, 'All apps link copied!');
+        }
+        document.getElementById('copyAllLinkBtn').addEventListener('click', copyAllAppsLink);
+        document.getElementById('copyAllLinkBtn2').addEventListener('click', copyAllAppsLink);
+
+        function copyToClipboard(text, successMsg) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => alert(successMsg)).catch(() => fallbackCopy(text, successMsg));
+            } else fallbackCopy(text, successMsg);
+        }
+        function fallbackCopy(text, successMsg) {
+            const ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); alert(successMsg); } catch (e) { alert('Copy failed. Link: ' + text); }
+            document.body.removeChild(ta);
+        }
+
+        function decodeAppData(encoded) {
+            try {
+                let b64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+                while (b64.length % 4) b64 += '=';
+                const json = decodeURIComponent(escape(atob(b64)));
+                return JSON.parse(json);
+            } catch (e) { return null; }
+        }
+
+        function handleSharedLink() {
+            const hash = window.location.hash;
+            if (!hash) return;
+            if (hash.startsWith('#app=')) {
+                const data = decodeAppData(hash.substring(5));
+                if (data && data.files) {
+                    const existing = appStore.apps.find(a => a.name === data.name);
+                    if (!existing) {
+                        const newApp = { id: 'app_' + Date.now(), name: data.name, icon: data.icon, files: data.files, createdAt: Date.now(), updatedAt: Date.now() };
+                        appStore.apps.push(newApp); saveApps(); renderOrbitalApps(); renderAppstore(); populateShareDropdown();
+                        alert(`App "${data.name}" imported!`);
+                    }
+                }
+                history.replaceState(null, '', window.location.pathname);
+            } else if (hash.startsWith('#apps=')) {
+                try {
+                    let b64 = hash.substring(6).replace(/-/g, '+').replace(/_/g, '/');
+                    while (b64.length % 4) b64 += '=';
+                    const json = decodeURIComponent(escape(atob(b64)));
+                    const apps = JSON.parse(json);
+                    if (Array.isArray(apps)) {
+                        let imported = 0;
+                        apps.forEach(data => {
+                            if (data && data.files) {
+                                const existing = appStore.apps.find(a => a.name === data.name);
+                                if (!existing) {
+                                    appStore.apps.push({ id: 'app_' + Date.now() + '_' + imported, name: data.name, icon: data.icon, files: data.files, createdAt: Date.now(), updatedAt: Date.now() });
+                                    imported++;
+                                }
+                            }
+                        });
+                        saveApps(); renderOrbitalApps(); renderAppstore(); populateShareDropdown();
+                        if (imported > 0) alert(`${imported} app(s) imported!`);
+                    }
+                } catch (e) {}
+                history.replaceState(null, '', window.location.pathname);
+            }
+        }
+
+        document.getElementById('clearStorageBtn').addEventListener('click', () => {
+            if (confirm('Clear ALL apps and data? This cannot be undone.')) {
+                localStorage.removeItem('q-os-apps');
+                appStore.apps = []; renderOrbitalApps(); renderAppstore(); populateShareDropdown(); showView(null);
+            }
+        });
+
+        let mqttClient = null;
+        let isCloudSynced = false;
+
+        function getCloudCredentials() {
+            const email = document.getElementById('cloudEmailInput').value.trim();
+            const password = document.getElementById('cloudPasswordInput').value;
+            return { email, password };
+        }
+
+        function getCloudTopic(email) {
+            const safe = email.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            return `${window.Q_CONFIG.topicPrefix}/${safe}/apps`;
+        }
+
+        document.getElementById('cloudSyncBtn').addEventListener('click', async () => {
+            const { email, password } = getCloudCredentials();
+            const statusEl = document.getElementById('cloudStatus');
+            if (!email || !password) { statusEl.textContent = 'Please enter email and password.'; return; }
+            if (typeof mqtt === 'undefined') { statusEl.textContent = 'MQTT library not loaded.'; return; }
+
+            statusEl.textContent = 'Connecting...';
+            try {
+                if (mqttClient) { try { mqttClient.end(); } catch(e) {} mqttClient = null; }
+
+                const clientId = 'qos_' + Math.random().toString(16).substr(2, 8);
+                mqttClient = mqtt.connect(window.Q_CONFIG.brokerUrl, {
+                    clientId: clientId,
+                    username: email,
+                    password: password,
+                    clean: true,
+                    connectTimeout: 10000,
+                    reconnectPeriod: 0
+                });
+
+                const topic = getCloudTopic(email);
+
+                mqttClient.on('connect', () => {
+                    statusEl.textContent = 'Connected. Syncing...';
+                    mqttClient.subscribe(topic, (err) => {
+                        if (err) { statusEl.textContent = 'Subscribe failed.'; return; }
+                        const payload = JSON.stringify({ apps: appStore.apps, ts: Date.now() });
+                        mqttClient.publish(topic, payload, { qos: 1, retain: true }, (err) => {
+                            if (err) statusEl.textContent = 'Publish failed.';
+                            else { statusEl.textContent = 'Synced to cloud!'; isCloudSynced = true; }
+                        });
+                    });
+                });
+
+                mqttClient.on('message', (recvTopic, message) => {
+                    try {
+                        const data = JSON.parse(message.toString());
+                        if (data && Array.isArray(data.apps) && data.ts) {
+                            const localLatest = Math.max(0, ...appStore.apps.map(a => a.updatedAt || 0));
+                            if (data.ts > localLatest) {
+                                appStore.apps = data.apps;
+                                saveApps(); renderOrbitalApps(); renderAppstore(); populateShareDropdown();
+                                statusEl.textContent = 'Downloaded cloud apps.';
+                            }
+                        }
+                    } catch (e) {}
+                });
+
+                mqttClient.on('error', () => { statusEl.textContent = 'Connection error.'; });
+            } catch (e) { statusEl.textContent = 'Sync failed: ' + e.message; }
+        });
+
+        window.addEventListener('resize', () => {
+            scribbleData = null;
+            drawScribblePath();
+            positionOrbitalApps();
+            if (appStore.previewMode === 'float' && floatWindow.classList.contains('active')) sizeFloatFrame();
+        });
+
+        function init() {
+            initSettings();
+            loadApps();
+            scribbleData = drawScribblePath();
+            positionOrbitalApps();
+            populateShareDropdown();
+            handleSharedLink();
+
+            setTimeout(() => {
+                scribbleData = null;
+                drawScribblePath();
+                positionOrbitalApps();
+            }, 100);
+        }
+
+        init();
+    </script>
+</body>
+</html>
