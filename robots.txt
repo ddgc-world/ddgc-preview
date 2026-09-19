@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /camera/
+Disallow: /q/
+Disallow: /shapemerge/
 
 Sitemap: https://ddgc.world/sitemap.xml
