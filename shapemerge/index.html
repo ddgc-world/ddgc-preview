@@ -220,6 +220,10 @@
         <div style="font-size: 12px; opacity: 0.6; margin-bottom: 4px;">AMBIENT MUSIC</div>
         <button id="musicToggleBtn" class="btn audio-mode-btn" data-mode="on" style="padding: 4px 8px; font-size: 14px; display: block; width: 100%; text-align: right; margin-bottom: 4px; color: #4ade80;">Music: On</button>
         <div style="font-size: 11px; opacity: 0.4; margin-bottom: 12px; text-align: right;">Generative ambient music (never repeats)</div>
+        <div style="font-size: 12px; opacity: 0.6; margin-bottom: 4px;">YOUR MUSIC</div>
+        <button id="uploadMusicBtn" class="btn" style="padding: 4px 8px; font-size: 14px; display: block; width: 100%; text-align: right; margin-bottom: 4px;">Upload Music</button>
+        <button id="removeMusicBtn" class="btn" style="padding: 4px 8px; font-size: 14px; display: none; width: 100%; text-align: right; margin-bottom: 4px;">Remove Music</button>
+        <div id="customMusicName" style="font-size: 11px; opacity: 0.4; margin-bottom: 12px; text-align: right;"></div>
         <div style="font-size: 12px; opacity: 0.6; margin-bottom: 4px;">SOUND EFFECTS</div>
         <button id="sfxToggleBtn" class="btn audio-mode-btn" data-mode="on" style="padding: 4px 8px; font-size: 14px; display: block; width: 100%; text-align: right; margin-bottom: 12px; color: #4ade80;">SFX: On</button>
         <button id="backAudioBtn" class="btn" style="padding: 4px 8px; font-size: 14px; display: block; width: 100%; text-align: right; padding-top: 16px;">Back</button>
@@ -253,6 +257,7 @@
     </div>
 
     <input type="file" id="bgUpload" accept="image/*">
+    <input type="file" id="musicUpload" accept="audio/*" style="display:none;">
     <input type="file" id="vidUpload" accept="video/*">
 
     <div id="discoveryPopup" class="discovery-popup" style="display: none;"></div>
@@ -355,6 +360,8 @@
         let musicNodes = [];
         let musicInterval = null;
         let musicActive = false;
+        let customMusic = null;
+        let customMusicName = '';
 
         // Audio state
         const audioState = {
@@ -393,6 +400,16 @@
                 } catch(e) {}
             }
             musicNodes = [];
+        }
+
+        // Custom uploaded music: loops forever, replaces generative ambient while loaded
+        function startCustomMusic() {
+            if (!customMusic || !audioState.master || !audioState.music) return;
+            stopAmbientMusic();
+            try { customMusic.play().catch(function(){}); } catch(e) {}
+        }
+        function stopCustomMusic() {
+            if (customMusic) { try { customMusic.pause(); } catch(e) {} }
         }
 
         function scheduleAmbientNotes() {
@@ -731,13 +748,14 @@
             audioState.master = !audioState.master;
             if (!audioState.master) {
                 stopAmbientMusic();
+                stopCustomMusic();
                 if (audioCtx && audioCtx.state === 'running') {
                     audioCtx.suspend();
                 }
             } else {
                 const ctx = initAudioContext();
                 if (ctx.state === 'suspended') ctx.resume();
-                if (audioState.music) startAmbientMusic();
+                if (audioState.music) { if (customMusic) startCustomMusic(); else startAmbientMusic(); }
             }
             updateAudioUI();
             saveProgress();
@@ -749,13 +767,43 @@
             audioState.music = !audioState.music;
             if (!audioState.music || !audioState.master) {
                 stopAmbientMusic();
+                stopCustomMusic();
             } else {
                 const ctx = initAudioContext();
                 if (ctx.state === 'suspended') ctx.resume();
-                startAmbientMusic();
+                if (customMusic) startCustomMusic(); else startAmbientMusic();
             }
             updateAudioUI();
             saveProgress();
+        });
+
+        // Custom music upload: plays on loop, replaces generative ambient while loaded
+        const musicUpload = document.getElementById('musicUpload');
+        document.getElementById('uploadMusicBtn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            musicUpload.click();
+        });
+        musicUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0]; if (!file) return;
+            stopCustomMusic();
+            customMusic = new Audio();
+            customMusic.src = URL.createObjectURL(file);
+            customMusic.loop = true;
+            customMusicName = file.name;
+            document.getElementById('customMusicName').textContent = file.name;
+            document.getElementById('removeMusicBtn').style.display = 'block';
+            document.getElementById('uploadMusicBtn').textContent = 'Change Music';
+            startCustomMusic();
+            musicUpload.value = '';
+        });
+        document.getElementById('removeMusicBtn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (customMusic) { stopCustomMusic(); customMusic = null; }
+            customMusicName = '';
+            document.getElementById('customMusicName').textContent = '';
+            document.getElementById('removeMusicBtn').style.display = 'none';
+            document.getElementById('uploadMusicBtn').textContent = 'Upload Music';
+            if (audioState.master && audioState.music) startAmbientMusic();
         });
 
         // SFX Toggle
