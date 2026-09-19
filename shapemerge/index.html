@@ -217,9 +217,6 @@
         <div style="font-size: 15px; font-weight: bold; margin-bottom: 12px;">Audio Settings</div>
         <div style="font-size: 12px; opacity: 0.6; margin-bottom: 4px;">MASTER CONTROL</div>
         <button id="masterAudioBtn" class="btn audio-mode-btn" data-mode="on" style="padding: 4px 8px; font-size: 14px; display: block; width: 100%; text-align: right; margin-bottom: 12px; color: #4ade80;">Master: On</button>
-        <div style="font-size: 12px; opacity: 0.6; margin-bottom: 4px;">AMBIENT MUSIC</div>
-        <button id="musicToggleBtn" class="btn audio-mode-btn" data-mode="on" style="padding: 4px 8px; font-size: 14px; display: block; width: 100%; text-align: right; margin-bottom: 4px; color: #4ade80;">Music: On</button>
-        <div style="font-size: 11px; opacity: 0.4; margin-bottom: 12px; text-align: right;">Generative ambient music (never repeats)</div>
         <div style="font-size: 12px; opacity: 0.6; margin-bottom: 4px;">YOUR MUSIC</div>
         <button id="uploadMusicBtn" class="btn" style="padding: 4px 8px; font-size: 14px; display: block; width: 100%; text-align: right; margin-bottom: 4px;">Upload Music</button>
         <button id="removeMusicBtn" class="btn" style="padding: 4px 8px; font-size: 14px; display: none; width: 100%; text-align: right; margin-bottom: 4px;">Remove Music</button>
@@ -257,7 +254,7 @@
     </div>
 
     <input type="file" id="bgUpload" accept="image/*">
-    <input type="file" id="musicUpload" accept=".mp3,.m4a,.wav,.ogg,.oga,.aac,.flac,.aiff,.opus" style="display:none;">
+    <input type="file" id="musicUpload" accept=".mp3,.m4a,.wav,.ogg,.oga,.aac,.flac,.aiff,.aif,.opus,.wma,.mid,.midi,.amr,.mka,.caf,.webm" style="display:none;">
     <input type="file" id="vidUpload" accept="video/*">
 
     <div id="discoveryPopup" class="discovery-popup" style="display: none;"></div>
@@ -357,16 +354,12 @@
 
         // --- AUDIO SYSTEM ---
         let audioCtx = null;
-        let musicNodes = [];
-        let musicInterval = null;
-        let musicActive = false;
         let customMusic = null;
         let customMusicName = '';
 
         // Audio state
         const audioState = {
             master: true,
-            music: true,
             sfx: true
         };
 
@@ -377,87 +370,13 @@
             return audioCtx;
         }
 
-        function startAmbientMusic() {
-            if (!audioState.master || !audioState.music || musicActive) return;
-            const ctx = initAudioContext();
-            if (ctx.state === 'suspended') ctx.resume();
-            musicActive = true;
-            scheduleAmbientNotes();
-        }
-
-        function stopAmbientMusic() {
-            musicActive = false;
-            if (musicInterval) {
-                clearInterval(musicInterval);
-                musicInterval = null;
-            }
-            for (const node of musicNodes) {
-                try {
-                    node.gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-                    setTimeout(() => {
-                        try { node.oscillator.stop(); node.gain.disconnect(); } catch(e) {}
-                    }, 500);
-                } catch(e) {}
-            }
-            musicNodes = [];
-        }
-
-        // Custom uploaded music: loops forever, replaces generative ambient while loaded
+        // Custom uploaded music: loops forever
         function startCustomMusic() {
-            if (!customMusic || !audioState.master || !audioState.music) return;
-            stopAmbientMusic();
+            if (!customMusic || !audioState.master) return;
             try { customMusic.play().catch(function(){}); } catch(e) {}
         }
         function stopCustomMusic() {
             if (customMusic) { try { customMusic.pause(); } catch(e) {} }
-        }
-
-        function scheduleAmbientNotes() {
-            if (musicInterval) clearInterval(musicInterval);
-            musicInterval = setInterval(() => {
-                if (!musicActive || !audioState.master || !audioState.music || !audioCtx) return;
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-
-                const chords = [
-                    [130.81, 164.81, 196.00, 246.94],
-                    [146.83, 185.00, 220.00, 277.18],
-                    [174.61, 220.00, 261.63, 329.63],
-                    [196.00, 246.94, 293.66, 369.99],
-                    [164.81, 207.65, 246.94, 311.13],
-                    [220.00, 277.18, 329.63, 415.30]
-                ];
-                const chord = chords[Math.floor(Math.random() * chords.length)];
-                const numNotes = 1 + Math.floor(Math.random() * 3);
-                const selectedNotes = [];
-                for (let i = 0; i < numNotes; i++) {
-                    const idx = Math.floor(Math.random() * chord.length);
-                    if (!selectedNotes.includes(idx)) selectedNotes.push(idx);
-                }
-                for (const idx of selectedNotes) {
-                    const freq = chord[idx];
-                    const detune = (Math.random() - 0.5) * 20;
-                    const duration = 1.5 + Math.random() * 3;
-                    const volume = 0.04 + Math.random() * 0.06;
-                    const osc = audioCtx.createOscillator();
-                    const gain = audioCtx.createGain();
-                    const waveforms = ['sine', 'triangle', 'sine', 'sine'];
-                    osc.type = waveforms[Math.floor(Math.random() * waveforms.length)];
-                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                    osc.detune.setValueAtTime(detune, audioCtx.currentTime);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
-                    gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.3);
-                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-                    osc.start(audioCtx.currentTime);
-                    osc.stop(audioCtx.currentTime + duration);
-                    musicNodes.push({ oscillator: osc, gain: gain });
-                    setTimeout(() => {
-                        try { osc.stop(); gain.disconnect(); } catch(e) {}
-                        musicNodes = musicNodes.filter(n => n.oscillator !== osc);
-                    }, duration * 1000 + 100);
-                }
-            }, 800 + Math.random() * 1700);
         }
 
         function playMergeSound(isNew) {
@@ -485,16 +404,11 @@
 
         function updateAudioUI() {
             const masterBtn = document.getElementById('masterAudioBtn');
-            const musicBtn = document.getElementById('musicToggleBtn');
             const sfxBtn = document.getElementById('sfxToggleBtn');
 
             masterBtn.textContent = audioState.master ? 'Master: On' : 'Master: Off';
             masterBtn.style.color = audioState.master ? '#4ade80' : '#ff6b6b';
             masterBtn.dataset.mode = audioState.master ? 'on' : 'off';
-
-            musicBtn.textContent = audioState.music ? 'Music: On' : 'Music: Off';
-            musicBtn.style.color = audioState.music ? '#4ade80' : '#ff6b6b';
-            musicBtn.dataset.mode = audioState.music ? 'on' : 'off';
 
             sfxBtn.textContent = audioState.sfx ? 'SFX: On' : 'SFX: Off';
             sfxBtn.style.color = audioState.sfx ? '#4ade80' : '#ff6b6b';
@@ -668,7 +582,6 @@
         canvas.addEventListener('pointerdown', e => {
             const ctx = initAudioContext();
             if (ctx.state === 'suspended') ctx.resume();
-            if (!musicActive && audioState.master && audioState.music) startAmbientMusic();
             const r = canvas.getBoundingClientRect();
             const x = e.clientX - r.left, y = e.clientY - r.top;
             const shape = getShapeAt(x,y);
@@ -747,7 +660,6 @@
             e.stopPropagation();
             audioState.master = !audioState.master;
             if (!audioState.master) {
-                stopAmbientMusic();
                 stopCustomMusic();
                 if (audioCtx && audioCtx.state === 'running') {
                     audioCtx.suspend();
@@ -755,29 +667,13 @@
             } else {
                 const ctx = initAudioContext();
                 if (ctx.state === 'suspended') ctx.resume();
-                if (audioState.music) { if (customMusic) startCustomMusic(); else startAmbientMusic(); }
+                startCustomMusic();
             }
             updateAudioUI();
             saveProgress();
         });
 
-        // Music Toggle
-        document.getElementById('musicToggleBtn').addEventListener('click', function(e) {
-            e.stopPropagation();
-            audioState.music = !audioState.music;
-            if (!audioState.music || !audioState.master) {
-                stopAmbientMusic();
-                stopCustomMusic();
-            } else {
-                const ctx = initAudioContext();
-                if (ctx.state === 'suspended') ctx.resume();
-                if (customMusic) startCustomMusic(); else startAmbientMusic();
-            }
-            updateAudioUI();
-            saveProgress();
-        });
-
-        // Custom music upload: plays on loop, replaces generative ambient while loaded
+        // Custom music upload: plays on loop
         const musicUpload = document.getElementById('musicUpload');
         document.getElementById('uploadMusicBtn').addEventListener('click', function(e) {
             e.stopPropagation();
@@ -803,7 +699,6 @@
             document.getElementById('customMusicName').textContent = '';
             document.getElementById('removeMusicBtn').style.display = 'none';
             document.getElementById('uploadMusicBtn').textContent = 'Upload Music';
-            if (audioState.master && audioState.music) startAmbientMusic();
         });
 
         // SFX Toggle
@@ -938,7 +833,6 @@
                 if (typeof data.autoMergeState === 'number') autoMergeState = data.autoMergeState;
                 if (data.audioState) {
                     audioState.master = data.audioState.master !== undefined ? data.audioState.master : true;
-                    audioState.music = data.audioState.music !== undefined ? data.audioState.music : true;
                     audioState.sfx = data.audioState.sfx !== undefined ? data.audioState.sfx : true;
                 }
 
@@ -1011,13 +905,6 @@
                 latestDiscovery.style.display='block';
                 tutorial.style.display='none';
             }
-
-            // Start music if enabled
-            if (audioState.master && audioState.music) {
-                const ctx = initAudioContext();
-                if (ctx.state === 'suspended') ctx.resume();
-                startAmbientMusic();
-            }
         }
 
         // --- INIT ---
@@ -1048,16 +935,16 @@
         window.addEventListener('beforeunload', () => {
             saveTotalTime();
             saveProgress();
-            stopAmbientMusic();
+            stopCustomMusic();
         });
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
                 saveTotalTime();
                 saveProgress();
-            } else if (document.visibilityState === 'visible' && audioState.master && audioState.music) {
+            } else if (document.visibilityState === 'visible' && audioState.master) {
                 const ctx = initAudioContext();
                 if (ctx.state === 'suspended') ctx.resume();
-                startAmbientMusic();
+                startCustomMusic();
             }
         });
 
