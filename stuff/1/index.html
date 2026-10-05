@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full Screen Safari Interface</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* Floating Fullscreen Controls */
+    .controls {
+      position: fixed;
+      top: 1.5rem;
+      right: 1.5rem;
+      z-index: 1000;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.15);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 0.75rem 1.25rem;
+      border-radius: 9999px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+
+    .container {
+      max-width: 600px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      color: #94a3b8;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <button class="btn" id="fullscreen-btn" onclick="toggleFullScreen()">Enter Full Screen</button>
+  </div>
+
+  <div class="container">
+    <h1>Distraction-Free Mode</h1>
+    <p>Click the button in the top-right corner to toggle Safari into true full-screen mode.</p>
+  </div>
+
+  <script>
+    function toggleFullScreen() {
+      const btn = document.getElementById('fullscreen-btn');
+
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        // Request fullscreen (Safari uses webkit prefix on iOS/older macOS)
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen();
+        } else if (docEl.webkitRequestFullscreen) {
+          docEl.webkitRequestFullscreen();
+        }
+        btn.textContent = "Exit Full Screen";
+      } else {
+        // Exit fullscreen
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+        btn.textContent = "Enter Full Screen";
+      }
+    }
+
+    // Sync button text if exited via Esc key
+    document.addEventListener('fullscreenchange', updateBtn);
+    document.addEventListener('webkitfullscreenchange', updateBtn);
+
+    function updateBtn() {
+      const btn = document.getElementById('fullscreen-btn');
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        btn.textContent = "Enter Full Screen";
+      } else {
+        btn.textContent = "Exit Full Screen";
+      }
+    }
+  </script>
+</body>
+</html>
