@@ -13,7 +13,6 @@
       #notepad::-webkit-scrollbar { width:6px; }
       #notepad::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
 
-      /* status area */
       #status-area {
         position:fixed; top:1rem; right:1rem;
         display:flex; align-items:center; gap:.45rem;
@@ -34,7 +33,6 @@
         letter-spacing:.02em; pointer-events:none; white-space:nowrap;
       }
 
-      /* typing indicator */
       #typing-indicator {
         position:fixed; bottom:1rem; left:1rem;
         display:flex; align-items:center; gap:.4rem;
@@ -55,7 +53,6 @@
         30% { transform:translateY(-3px); opacity:1; }
       }
 
-      /* image popover */
       #image-popover {
         position:fixed; top:3.5rem; right:1rem;
         background:#0a0a0a; border:1px solid #1e293b; border-radius:.6rem;
@@ -73,46 +70,43 @@
       }
       .img-upload-btn:hover { background:#1e293b; color:#e2e8f0; border-color:#334155; }
 
-      /* editor layout */
-      #editor-wrap { position:relative; flex:1; width:100%; }
+      /* ===== EDITOR ===== */
+      #editor-wrap {
+        position:relative;
+        flex:1;
+        width:100%;
+        overflow:hidden;
+        /* textarea is BEHIND the image layer */
+      }
       #notepad {
-        position:relative; width:100%; height:100%;
+        position:absolute; inset:0;
+        width:100%; height:100%;
         background:transparent; resize:none; outline:none;
         font-family: 'SF Mono', 'Fira Code', monospace;
         font-size:1.125rem; line-height:1.7;
         color:#e2e8f0; padding:1.5rem;
-        z-index:2;
+        z-index:1;                 /* behind images */
       }
-      #notepad::placeholder { color:#1e293b; font-style:italic; font-weight:300; }
-      #notepad::-webkit-scrollbar { width:6px; }
-      #notepad::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
 
-      /* image layer — separate from textarea, images are absolutely positioned */
+      /* image layer is ON TOP of textarea, but click-through */
       #image-layer {
         position:absolute; inset:0;
-        overflow:hidden;
-        z-index:1;
-        pointer-events:none;
+        z-index:2;
+        pointer-events:none;       /* clicks pass through to textarea... */
       }
 
-      /* each image node */
+      /* ...except on the image nodes themselves */
       .img-node {
         position:absolute;
-        pointer-events:auto;
+        pointer-events:auto;       /* ...which re-enable clicks */
         cursor:grab;
         user-select:none;
         touch-action:none;
-        transition:box-shadow .15s, outline-color .15s;
         outline:2px solid transparent;
-        outline-offset:2px;
+        outline-offset:3px;
       }
-      .img-node.selected {
-        outline-color:#34d399;
-      }
-      .img-node.dragging {
-        cursor:grabbing;
-        z-index:9999 !important;
-      }
+      .img-node.selected { outline-color:#34d399; }
+      .img-node.dragging { cursor:grabbing; }
       .img-node img {
         display:block;
         pointer-events:none;
@@ -121,37 +115,36 @@
         box-shadow:0 4px 20px rgba(0,0,0,.5);
       }
       .img-node .remove {
-        position:absolute; top:-8px; right:-8px;
-        width:18px; height:18px;
+        position:absolute; top:-10px; right:-10px;
+        width:22px; height:22px;
         background:#0f0f0f; border:1px solid #1e293b;
-        border-radius:50%; color:#f87171; font-size:11px;
+        border-radius:50%; color:#f87171; font-size:12px;
         display:none; align-items:center; justify-content:center;
         cursor:pointer; line-height:1; padding:0;
-        z-index:10;
+        z-index:30;
+        pointer-events:auto;
       }
-      .img-node.selected .remove,
-      .img-node:hover .remove { display:flex; }
+      .img-node.selected .remove { display:flex; }
       .img-node .remove:hover { background:#450a0a; color:#fca5a5; border-color:#7f1d1d; }
 
-      /* resize handle */
       .img-node .resize-handle {
-        position:absolute; bottom:-6px; right:-6px;
-        width:14px; height:14px;
+        position:absolute; bottom:-8px; right:-8px;
+        width:18px; height:18px;
         background:#10b981; border:2px solid #052e16;
         border-radius:50%; cursor:nwse-resize;
         display:none;
-        z-index:10;
+        z-index:30;
         pointer-events:auto;
       }
       .img-node.selected .resize-handle { display:block; }
 
-      /* selection toolbar (floating) */
       #img-toolbar {
         position:fixed; z-index:300;
         background:#0a0a0a; border:1px solid #1e293b;
         border-radius:.5rem;
         display:none;
         flex-direction:row;
+        align-items:center;
         gap:.15rem;
         padding:.25rem;
         box-shadow:0 10px 30px rgba(0,0,0,.8);
@@ -160,7 +153,7 @@
       #img-toolbar.open { display:flex; }
       #img-toolbar button {
         background:transparent; border:none; color:#94a3b8;
-        font-size:.65rem; padding:.3rem .45rem;
+        font-size:.65rem; padding:.35rem .5rem;
         border-radius:.3rem; cursor:pointer;
         font-family:'SF Mono', monospace;
         transition:background .12s, color .12s;
@@ -169,9 +162,7 @@
       #img-toolbar button:hover { background:#1e293b; color:#e2e8f0; }
       #img-toolbar button.danger { color:#f87171; }
       #img-toolbar button.danger:hover { background:#450a0a; color:#fca5a5; }
-      #img-toolbar .sep {
-        width:1px; background:#1e293b; margin:.15rem .1rem;
-      }
+      #img-toolbar .sep { width:1px; height:16px; background:#1e293b; margin:0 .1rem; }
 
       @keyframes soft-pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
       .animate-soft-pulse { animation:soft-pulse 2s infinite ease-in-out; }
@@ -194,65 +185,59 @@
       <input type="file" id="img-upload-input" accept="image/*" style="display:none" />
     </div>
 
-    <!-- floating image toolbar (appears on selection) -->
     <div id="img-toolbar">
-      <button data-act="front" title="bring to front (above all text/images)">front</button>
-      <button data-act="back" title="send to back">back</button>
+      <button data-act="front">front</button>
+      <button data-act="back">back</button>
       <div class="sep"></div>
-      <button data-act="inline" title="insert as inline token in text — click in textarea to place, then choose behind/inline">inline</button>
+      <button data-act="inline">inline</button>
       <div class="sep"></div>
-      <button data-act="smaller" title="smaller">−</button>
-      <button data-act="bigger" title="bigger">+</button>
+      <button data-act="smaller">−</button>
+      <button data-act="bigger">+</button>
       <div class="sep"></div>
-      <button data-act="remove" class="danger" title="remove image">✕</button>
+      <button data-act="remove" class="danger">delete</button>
     </div>
 
     <main class="flex-1 relative w-full mx-auto flex flex-col" style="padding:0;">
       <div id="editor-wrap">
+        <textarea id="notepad" placeholder="start typing..." spellcheck="false" autofocus></textarea>
         <div id="image-layer"></div>
-        <textarea
-          id="notepad"
-          placeholder="start typing..."
-          spellcheck="false"
-          autofocus
-        ></textarea>
       </div>
     </main>
 
     <script>
-      // ===== SYNC LOGIC =====
+      // ============ STATE ============
       const roomId = window.location.hash.slice(1) || 'eez-notepad-default-room';
       if (!window.location.hash) window.location.hash = roomId;
 
-      const textarea = document.getElementById('notepad');
-      const imageLayer = document.getElementById('image-layer');
-      const statusDot = document.getElementById('status-dot');
-      const onlineCountEl = document.getElementById('online-count');
-      const typingIndicator = document.getElementById('typing-indicator');
-      const typingText = document.getElementById('typing-text');
-      const imgToolbar = document.getElementById('img-toolbar');
+      const textarea       = document.getElementById('notepad');
+      const imageLayer     = document.getElementById('image-layer');
+      const statusDot      = document.getElementById('status-dot');
+      const onlineCountEl  = document.getElementById('online-count');
+      const typingIndicator= document.getElementById('typing-indicator');
+      const typingText     = document.getElementById('typing-text');
+      const imgToolbar     = document.getElementById('img-toolbar');
+      const imgPopover     = document.getElementById('image-popover');
+      const imgUploadInput = document.getElementById('img-upload-input');
+      const statusArea     = document.getElementById('status-area');
 
       const clientId = 'notepad_' + Math.random().toString(36).slice(2, 9);
-      const topic = 'eez/v1/notepad/' + encodeURIComponent(roomId);
+      const topic    = 'eez/v1/notepad/' + encodeURIComponent(roomId);
 
       let isRemoteUpdate = false;
       let peers = new Set([clientId]);
       let peerLastSeen = new Map();
       let typingPeers = new Map();
+      let lastTypingSent = 0;
 
-      // images: id -> { dataUrl, x, y, w, h, z, sel }
-      // w/h = width/height (in px). If null, use natural.
-      // z = z-index (default 1)
-      const images = new Map();
+      const images = new Map();   // id -> { dataUrl, x, y, w, h, z }
+      const imgNodes = new Map(); // id -> DOM
       let selectedId = null;
+      let zCounter = 10;
 
       const TYPING_TIMEOUT_MS = 2500;
       const TYPING_BROADCAST_MS = 1000;
-      let lastTypingSent = 0;
 
-      function updateOnlineCount() { onlineCountEl.textContent = peers.size; }
-      updateOnlineCount();
-
+      // ============ TYPING ============
       function renderTypingIndicator() {
         const now = Date.now();
         for (const [id, ts] of typingPeers.entries()) {
@@ -267,116 +252,93 @@
           typingText.textContent = count === 1 ? 'someone is typing' : count + ' people are typing';
         }
       }
+      setInterval(renderTypingIndicator, 500);
+      function updateOnlineCount() { onlineCountEl.textContent = peers.size; }
+      updateOnlineCount();
 
-      // ===== IMAGE NODES =====
-      const imgNodes = new Map(); // id -> DOM element
-
-      function getNode(id) {
-        if (imgNodes.has(id)) return imgNodes.get(id);
+      // ============ IMAGE NODE ============
+      function makeNode(id) {
         const rec = images.get(id);
         if (!rec) return null;
 
         const node = document.createElement('div');
         node.className = 'img-node';
         node.dataset.id = id;
+        node.style.left = rec.x + 'px';
+        node.style.top  = rec.y + 'px';
+        node.style.zIndex = rec.z;
 
         const img = document.createElement('img');
         img.src = rec.dataUrl;
-        img.alt = '';
         img.draggable = false;
-        img.style.width = rec.w ? rec.w + 'px' : 'auto';
-        img.style.height = rec.h ? rec.h + 'px' : 'auto';
+        if (rec.w) img.style.width  = rec.w + 'px';
+        if (rec.h) img.style.height = rec.h + 'px';
         node.appendChild(img);
 
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove';
-        removeBtn.textContent = '✕';
-        removeBtn.title = 'remove image';
-        removeBtn.addEventListener('click', (e) => {
+        const del = document.createElement('button');
+        del.className = 'remove';
+        del.textContent = '✕';
+        del.title = 'delete image';
+        del.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); });
+        del.addEventListener('touchstart', (e) => { e.stopPropagation(); e.preventDefault(); }, { passive: false });
+        del.addEventListener('click', (e) => {
           e.stopPropagation();
           deleteImage(id);
         });
-        node.appendChild(removeBtn);
+        node.appendChild(del);
 
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'resize-handle';
-        node.appendChild(resizeHandle);
-        attachResize(resizeHandle, node, id);
+        const handle = document.createElement('div');
+        handle.className = 'resize-handle';
+        node.appendChild(handle);
 
-        // position
-        node.style.left = (rec.x || 40) + 'px';
-        node.style.top  = (rec.y || 40) + 'px';
-        node.style.zIndex = rec.z || 1;
-
-        // selection + drag
-        attachDragAndSelect(node, id);
+        attachSelect(node, id);
+        attachDrag(node, id);
+        attachResize(handle, node, id);
 
         imageLayer.appendChild(node);
         imgNodes.set(id, node);
         return node;
       }
 
-      function removeNode(id) {
-        const n = imgNodes.get(id);
-        if (n) { n.remove(); imgNodes.delete(id); }
-        if (selectedId === id) {
-          selectedId = null;
-          imgToolbar.classList.remove('open');
-        }
-      }
-
-      function updateNodeVisual(id) {
+      function updateNode(id) {
         const rec = images.get(id);
         const node = imgNodes.get(id);
         if (!rec || !node) return;
         node.style.left = rec.x + 'px';
         node.style.top  = rec.y + 'px';
-        node.style.zIndex = rec.z || 1;
+        node.style.zIndex = rec.z;
         const img = node.querySelector('img');
         if (img) {
-          img.style.width = rec.w ? rec.w + 'px' : 'auto';
-          img.style.height = rec.h ? rec.h + 'px' : 'auto';
+          if (rec.w) img.style.width  = rec.w + 'px'; else img.style.width  = '';
+          if (rec.h) img.style.height = rec.h + 'px'; else img.style.height = '';
         }
       }
 
-      function renderImages() {
-        images.forEach((rec, id) => getNode(id));
+      function renderAll() {
+        images.forEach((_, id) => {
+          if (!imgNodes.has(id)) makeNode(id);
+          else updateNode(id);
+        });
         for (const id of [...imgNodes.keys()]) {
-          if (!images.has(id)) removeNode(id);
+          if (!images.has(id)) {
+            imgNodes.get(id).remove();
+            imgNodes.delete(id);
+          }
         }
       }
 
-      function broadcastImageAdd(id) {
-        if (!client.connected) return;
-        const rec = images.get(id);
-        if (!rec) return;
-        client.publish(topic, JSON.stringify({
-          type: 'image_add', id, dataUrl: rec.dataUrl,
-          x: rec.x, y: rec.y, w: rec.w, h: rec.h, z: rec.z,
-          clientId
-        }));
+      // ============ SELECT ============
+      function attachSelect(node, id) {
+        // select on press (immediate) — drag will still work because it's the same press
+        const onPress = (e) => {
+          if (e.target.closest('.remove')) return;
+          if (e.target.closest('.resize-handle')) return;
+          selectImage(id);
+        };
+        node.addEventListener('mousedown', onPress);
+        node.addEventListener('touchstart', onPress, { passive: true });
       }
 
-      function broadcastImageUpdate(id) {
-        if (!client.connected) return;
-        const rec = images.get(id);
-        if (!rec) return;
-        client.publish(topic, JSON.stringify({
-          type: 'image_update', id,
-          x: rec.x, y: rec.y, w: rec.w, h: rec.h, z: rec.z,
-          clientId
-        }));
-      }
-
-      function deleteImage(id) {
-        images.delete(id);
-        removeNode(id);
-        if (client.connected) {
-          client.publish(topic, JSON.stringify({ type: 'image_remove', id, clientId }));
-        }
-      }
-
-      // ===== SELECTION =====
       function selectImage(id) {
         if (selectedId && selectedId !== id) {
           const prev = imgNodes.get(selectedId);
@@ -400,199 +362,220 @@
       }
 
       function positionToolbar(node) {
-        const r = node.getBoundingClientRect();
+        if (!node) return;
         imgToolbar.classList.add('open');
-        // measure toolbar width after making visible
-        const tw = imgToolbar.offsetWidth || 280;
-        const th = imgToolbar.offsetHeight || 32;
+        const r = node.getBoundingClientRect();
+        const tw = imgToolbar.offsetWidth || 300;
+        const th = imgToolbar.offsetHeight || 34;
         let left = r.left + r.width / 2 - tw / 2;
-        let top  = r.top - th - 8;
-        // keep onscreen
+        let top  = r.top - th - 10;
         left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
-        if (top < 8) top = r.bottom + 8;
+        if (top < 8) top = r.bottom + 10;
         imgToolbar.style.left = left + 'px';
         imgToolbar.style.top  = top + 'px';
       }
 
-      // click empty area → deselect
+      // click on textarea / empty space deselects
+      textarea.addEventListener('mousedown', () => {
+        // only deselect if clicking directly on textarea (not on image overlay)
+        // since overlay is above textarea, mousedown here means empty area
+        deselect();
+      });
       document.addEventListener('mousedown', (e) => {
         if (e.target.closest('.img-node')) return;
         if (e.target.closest('#img-toolbar')) return;
+        if (e.target.closest('#image-popover')) return;
+        if (e.target.closest('#status-area')) return;
         deselect();
       });
 
-      // ===== DRAG + SELECT =====
-      function attachDragAndSelect(node, id) {
-        let dragStartX, dragStartY, origX, origY, moved;
+      // ============ DRAG ============
+      function attachDrag(node, id) {
+        let sx, sy, ox, oy, moved = false, dragging = false;
 
-        function onPointerDown(e) {
-          if (e.target.classList.contains('remove')) return;
-          if (e.target.classList.contains('resize-handle')) return;
+        function down(e) {
+          if (e.target.closest('.remove') || e.target.closest('.resize-handle')) return;
           if (e.button !== undefined && e.button !== 0) return;
-          e.preventDefault();
-
-          // select this image
-          selectImage(id);
-
           const p = e.touches ? e.touches[0] : e;
-          dragStartX = p.clientX;
-          dragStartY = p.clientY;
+          sx = p.clientX; sy = p.clientY;
           const rec = images.get(id);
           if (!rec) return;
-          origX = rec.x;
-          origY = rec.y;
-          moved = false;
+          ox = rec.x; oy = rec.y;
+          moved = false; dragging = true;
           node.classList.add('dragging');
 
-          window.addEventListener('mousemove', onPointerMove);
-          window.addEventListener('mouseup', onPointerUp);
-          window.addEventListener('touchmove', onPointerMove, { passive: false });
-          window.addEventListener('touchend', onPointerUp);
+          window.addEventListener('mousemove', move);
+          window.addEventListener('mouseup', up);
+          window.addEventListener('touchmove', move, { passive: false });
+          window.addEventListener('touchend', up);
         }
 
-        function onPointerMove(e) {
-          if (dragStartX === undefined) return;
+        function move(e) {
+          if (!dragging) return;
           const p = e.touches ? e.touches[0] : e;
-          const dx = p.clientX - dragStartX;
-          const dy = p.clientY - dragStartY;
+          const dx = p.clientX - sx;
+          const dy = p.clientY - sy;
           if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
           if (e.cancelable) e.preventDefault();
 
           const rec = images.get(id);
           if (!rec) return;
-          const layerRect = imageLayer.getBoundingClientRect();
-          const nodeRect = node.getBoundingClientRect();
+          const lr = imageLayer.getBoundingClientRect();
+          const nr = node.getBoundingClientRect();
 
-          let nx = origX + dx;
-          let ny = origY + dy;
-          nx = Math.max(-nodeRect.width / 2, Math.min(nx, layerRect.width  - nodeRect.width / 2));
-          ny = Math.max(-nodeRect.height / 2, Math.min(ny, layerRect.height - nodeRect.height / 2));
+          let nx = ox + dx;
+          let ny = oy + dy;
+          nx = Math.max(-nr.width / 2,  Math.min(nx, lr.width  - nr.width / 2));
+          ny = Math.max(-nr.height / 2, Math.min(ny, lr.height - nr.height / 2));
 
-          rec.x = nx;
-          rec.y = ny;
+          rec.x = nx; rec.y = ny;
           node.style.left = nx + 'px';
           node.style.top  = ny + 'px';
-
-          // keep toolbar following
           if (selectedId === id) positionToolbar(node);
         }
 
-        function onPointerUp() {
+        function up() {
+          if (!dragging) return;
+          dragging = false;
           node.classList.remove('dragging');
-          window.removeEventListener('mousemove', onPointerMove);
-          window.removeEventListener('mouseup', onPointerUp);
-          window.removeEventListener('touchmove', onPointerMove);
-          window.removeEventListener('touchend', onPointerUp);
-          if (moved) broadcastImageUpdate(id);
-          dragStartX = dragStartY = undefined;
+          window.removeEventListener('mousemove', move);
+          window.removeEventListener('mouseup', up);
+          window.removeEventListener('touchmove', move);
+          window.removeEventListener('touchend', up);
+          if (moved) broadcastUpdate(id);
         }
 
-        node.addEventListener('mousedown', onPointerDown);
-        node.addEventListener('touchstart', onPointerDown, { passive: false });
+        node.addEventListener('mousedown', down);
+        node.addEventListener('touchstart', down, { passive: true });
       }
 
-      // ===== RESIZE =====
+      // ============ RESIZE ============
       function attachResize(handle, node, id) {
-        let startX, startY, startW, startH, aspect;
+        let sx, sy, sw, sh, aspect;
 
-        function onDown(e) {
+        function down(e) {
           e.stopPropagation();
           e.preventDefault();
           const p = e.touches ? e.touches[0] : e;
-          startX = p.clientX;
-          startY = p.clientY;
-          const rect = node.getBoundingClientRect();
-          startW = rect.width;
-          startH = rect.height;
-          aspect = startW / startH;
+          sx = p.clientX; sy = p.clientY;
+          const r = node.getBoundingClientRect();
+          sw = r.width; sh = r.height;
+          aspect = sw / sh;
 
-          window.addEventListener('mousemove', onMove);
-          window.addEventListener('mouseup', onUp);
-          window.addEventListener('touchmove', onMove, { passive: false });
-          window.addEventListener('touchend', onUp);
+          window.addEventListener('mousemove', move);
+          window.addEventListener('mouseup', up);
+          window.addEventListener('touchmove', move, { passive: false });
+          window.addEventListener('touchend', up);
         }
 
-        function onMove(e) {
+        function move(e) {
           const p = e.touches ? e.touches[0] : e;
-          const dx = p.clientX - startX;
-          const dy = p.clientY - startY;
+          const dx = p.clientX - sx;
+          const dy = p.clientY - sy;
           if (e.cancelable) e.preventDefault();
 
-          let newW = startW + dx;
-          let newH = startH + dy;
-
-          // maintain aspect ratio (use larger axis)
-          if (Math.abs(dx) > Math.abs(dy)) {
-            newH = newW / aspect;
-          } else {
-            newW = newH * aspect;
-          }
-          newW = Math.max(40, newW);
-          newH = Math.max(40, newH);
+          let nw = sw + dx;
+          let nh = sh + dy;
+          if (Math.abs(dx) > Math.abs(dy)) nh = nw / aspect;
+          else nw = nh * aspect;
+          nw = Math.max(40, nw);
+          nh = Math.max(40, nh);
 
           const rec = images.get(id);
           if (!rec) return;
-          rec.w = newW;
-          rec.h = newH;
-          node.querySelector('img').style.width = newW + 'px';
-          node.querySelector('img').style.height = newH + 'px';
-
+          rec.w = nw; rec.h = nh;
+          const img = node.querySelector('img');
+          img.style.width  = nw + 'px';
+          img.style.height = nh + 'px';
           if (selectedId === id) positionToolbar(node);
         }
 
-        function onUp() {
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('mouseup', onUp);
-          window.removeEventListener('touchmove', onMove);
-          window.removeEventListener('touchend', onUp);
-          broadcastImageUpdate(id);
+        function up() {
+          window.removeEventListener('mousemove', move);
+          window.removeEventListener('mouseup', up);
+          window.removeEventListener('touchmove', move);
+          window.removeEventListener('touchend', up);
+          broadcastUpdate(id);
         }
 
-        handle.addEventListener('mousedown', onDown);
-        handle.addEventListener('touchstart', onDown, { passive: false });
+        handle.addEventListener('mousedown', down);
+        handle.addEventListener('touchstart', down, { passive: false });
       }
 
-      // ===== TOOLBAR ACTIONS =====
+      // ============ CRUD ============
+      function deleteImage(id) {
+        images.delete(id);
+        const node = imgNodes.get(id);
+        if (node) { node.remove(); imgNodes.delete(id); }
+        if (selectedId === id) deselect();
+        if (client.connected) {
+          client.publish(topic, JSON.stringify({ type: 'image_remove', id, clientId }));
+        }
+      }
+
+      function broadcastAdd(id) {
+        const rec = images.get(id);
+        if (!rec || !client.connected) return;
+        client.publish(topic, JSON.stringify({
+          type: 'image_add', id,
+          dataUrl: rec.dataUrl,
+          x: rec.x, y: rec.y, w: rec.w, h: rec.h, z: rec.z,
+          clientId
+        }));
+      }
+
+      function broadcastUpdate(id) {
+        const rec = images.get(id);
+        if (!rec || !client.connected) return;
+        client.publish(topic, JSON.stringify({
+          type: 'image_update', id,
+          x: rec.x, y: rec.y, w: rec.w, h: rec.h, z: rec.z,
+          clientId
+        }));
+      }
+
+      // ============ TOOLBAR ============
+      imgToolbar.addEventListener('mousedown', (e) => e.stopPropagation());
+      imgToolbar.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
       imgToolbar.addEventListener('click', (e) => {
         const btn = e.target.closest('button');
         if (!btn || !selectedId) return;
-        const act = btn.dataset.act;
         const rec = images.get(selectedId);
         if (!rec) return;
+        const act = btn.dataset.act;
 
         if (act === 'front') {
-          rec.z = 100;
-          updateNodeVisual(selectedId);
-          broadcastImageUpdate(selectedId);
+          zCounter++;
+          rec.z = zCounter + 100;
+          updateNode(selectedId);
+          broadcastUpdate(selectedId);
         } else if (act === 'back') {
-          rec.z = 0;
-          updateNodeVisual(selectedId);
-          broadcastImageUpdate(selectedId);
+          zCounter++;
+          rec.z = -100 - zCounter;
+          updateNode(selectedId);
+          broadcastUpdate(selectedId);
         } else if (act === 'bigger') {
           rec.w = (rec.w || 320) * 1.15;
           rec.h = (rec.h || 240) * 1.15;
-          updateNodeVisual(selectedId);
-          broadcastImageUpdate(selectedId);
+          updateNode(selectedId);
+          broadcastUpdate(selectedId);
           positionToolbar(imgNodes.get(selectedId));
         } else if (act === 'smaller') {
           rec.w = Math.max(40, (rec.w || 320) / 1.15);
           rec.h = Math.max(40, (rec.h || 240) / 1.15);
-          updateNodeVisual(selectedId);
-          broadcastImageUpdate(selectedId);
+          updateNode(selectedId);
+          broadcastUpdate(selectedId);
           positionToolbar(imgNodes.get(selectedId));
         } else if (act === 'remove') {
           deleteImage(selectedId);
         } else if (act === 'inline') {
-          // insert inline token at cursor in textarea
           const token = `[[img:${selectedId}]]`;
           const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
+          const end   = textarea.selectionEnd;
           isRemoteUpdate = true;
-          const before = textarea.value.slice(0, start);
-          const after = textarea.value.slice(end);
-          textarea.value = before + token + after;
+          textarea.value = textarea.value.slice(0, start) + token + textarea.value.slice(end);
           const pos = start + token.length;
-          try { textarea.setSelectionRange(pos, pos); } catch(err) {}
+          try { textarea.setSelectionRange(pos, pos); } catch (err) {}
           isRemoteUpdate = false;
           textarea.focus();
           if (client.connected) {
@@ -600,18 +583,15 @@
               type: 'text_update', content: textarea.value, clientId
             }));
           }
-          // set image z to 0 so it sits behind text
-          rec.z = 0;
-          updateNodeVisual(selectedId);
-          broadcastImageUpdate(selectedId);
+          rec.z = -50;
+          updateNode(selectedId);
+          broadcastUpdate(selectedId);
         }
       });
 
-      // ===== MQTT =====
+      // ============ MQTT ============
       const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
-        clientId,
-        clean: true,
-        connectTimeout: 5000,
+        clientId, clean: true, connectTimeout: 5000,
       });
 
       client.on('connect', () => {
@@ -620,7 +600,7 @@
         client.publish(topic, JSON.stringify({ type: 'join', clientId }));
       });
       client.on('reconnect', () => { statusDot.className = "dot animate-soft-pulse reconnecting"; });
-      client.on('offline', () => { statusDot.className = "dot animate-soft-pulse offline"; });
+      client.on('offline',   () => { statusDot.className = "dot animate-soft-pulse offline"; });
 
       client.on('message', (t, payload) => {
         try {
@@ -632,10 +612,10 @@
               peerLastSeen.set(data.clientId, Date.now());
               updateOnlineCount();
             }
-            if (data.type === 'join' && data.clientId !== clientId && textarea.value) {
-              client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
-            }
-            if (data.type === 'join' && data.clientId !== clientId && images.size > 0) {
+            if (data.type === 'join' && data.clientId !== clientId) {
+              if (textarea.value) {
+                client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
+              }
               images.forEach((rec, id) => {
                 client.publish(topic, JSON.stringify({
                   type: 'image_add', id, dataUrl: rec.dataUrl,
@@ -652,24 +632,20 @@
             isRemoteUpdate = false;
           } else if (data.type === 'text_update' && data.clientId !== clientId) {
             isRemoteUpdate = true;
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
+            const s = textarea.selectionStart, e = textarea.selectionEnd;
             textarea.value = data.content;
-            try { textarea.setSelectionRange(start, end); } catch(e) {}
+            try { textarea.setSelectionRange(s, e); } catch (err) {}
             isRemoteUpdate = false;
             typingPeers.delete(data.clientId);
             renderTypingIndicator();
           } else if (data.type === 'image_add' && data.id && data.dataUrl) {
             images.set(data.id, {
               dataUrl: data.dataUrl,
-              x: typeof data.x === 'number' ? data.x : 40,
-              y: typeof data.y === 'number' ? data.y : 40,
-              w: data.w || null,
-              h: data.h || null,
-              z: data.z || 1,
+              x: data.x ?? 40, y: data.y ?? 40,
+              w: data.w ?? null, h: data.h ?? null,
+              z: data.z ?? 10,
             });
-            renderImages();
-            updateNodeVisual(data.id);
+            renderAll();
           } else if (data.type === 'image_update' && data.id) {
             const rec = images.get(data.id);
             if (rec) {
@@ -678,30 +654,34 @@
               if (data.w !== undefined) rec.w = data.w;
               if (data.h !== undefined) rec.h = data.h;
               if (data.z !== undefined) rec.z = data.z;
-              updateNodeVisual(data.id);
+              updateNode(data.id);
+              if (selectedId === data.id) positionToolbar(imgNodes.get(data.id));
             }
           } else if (data.type === 'image_remove' && data.id) {
             images.delete(data.id);
-            removeNode(data.id);
+            const node = imgNodes.get(data.id);
+            if (node) { node.remove(); imgNodes.delete(data.id); }
+            if (selectedId === data.id) deselect();
           } else if (data.type === 'clear') {
             isRemoteUpdate = true;
             textarea.value = '';
             isRemoteUpdate = false;
             images.clear();
-            for (const id of [...imgNodes.keys()]) removeNode(id);
+            for (const id of [...imgNodes.keys()]) {
+              imgNodes.get(id).remove();
+              imgNodes.delete(id);
+            }
+            deselect();
           }
         } catch (e) {}
       });
 
-      // ===== LOCAL TYPING =====
+      // ============ LOCAL TYPING ============
       textarea.addEventListener('input', () => {
         if (isRemoteUpdate) return;
         client.publish(topic, JSON.stringify({
-          type: 'text_update',
-          content: textarea.value,
-          clientId
+          type: 'text_update', content: textarea.value, clientId
         }));
-
         const now = Date.now();
         if (now - lastTypingSent > TYPING_BROADCAST_MS) {
           lastTypingSent = now;
@@ -724,29 +704,21 @@
           }
         }
         if (changed) updateOnlineCount();
-        renderTypingIndicator();
       }, 15000);
 
-      setInterval(renderTypingIndicator, 500);
-
-      // ===== POPOVER =====
-      const statusArea = document.getElementById('status-area');
-      const imagePopover = document.getElementById('image-popover');
-
+      // ============ POPOVER ============
       function togglePopover(open) {
-        const should = open !== undefined ? open : !imagePopover.classList.contains('open');
-        imagePopover.classList.toggle('open', should);
+        const should = open !== undefined ? open : !imgPopover.classList.contains('open');
+        imgPopover.classList.toggle('open', should);
       }
       statusArea.addEventListener('click', (e) => { e.stopPropagation(); togglePopover(); });
       document.addEventListener('click', (e) => {
-        if (!imagePopover.classList.contains('open')) return;
-        if (imagePopover.contains(e.target) || statusArea.contains(e.target)) return;
+        if (!imgPopover.classList.contains('open')) return;
+        if (imgPopover.contains(e.target) || statusArea.contains(e.target)) return;
         togglePopover(false);
       });
 
-      // ===== IMAGE INSERT =====
-      const imgUploadInput = document.getElementById('img-upload-input');
-
+      // ============ UPLOAD ============
       imgUploadInput.addEventListener('change', (e) => {
         const file = e.target.files && e.target.files[0];
         if (!file || !file.type.startsWith('image/')) return;
@@ -754,58 +726,45 @@
         reader.onload = (ev) => {
           const id = 'img_' + Math.random().toString(36).slice(2, 10);
           const offset = (images.size % 8) * 30;
+          zCounter++;
           const rec = {
             dataUrl: ev.target.result,
-            x: 60 + offset,
-            y: 60 + offset,
+            x: 60 + offset, y: 60 + offset,
             w: null, h: null,
-            z: 1,
+            z: zCounter + 10,
           };
           images.set(id, rec);
-          renderImages();
-          const node = imgNodes.get(id);
-          if (node) {
-            // get natural dimensions after load
-            const img = node.querySelector('img');
-            const setNatural = () => {
-              if (!rec.w && img.naturalWidth) {
-                const maxW = Math.min(560, imageLayer.clientWidth - 120);
-                const ratio = img.naturalWidth / img.naturalHeight;
-                rec.w = Math.min(img.naturalWidth, maxW);
-                rec.h = rec.w / ratio;
-                updateNodeVisual(id);
-                broadcastImageAdd(id);
-              }
-            };
-            if (img.complete) setNatural();
-            else img.onload = setNatural;
-          }
+          const node = makeNode(id);
+          const img = node.querySelector('img');
+          const finalize = () => {
+            if (!rec.w && img.naturalWidth) {
+              const maxW = Math.min(560, imageLayer.clientWidth - 120);
+              const ratio = img.naturalWidth / img.naturalHeight;
+              rec.w = Math.min(img.naturalWidth, maxW);
+              rec.h = rec.w / ratio;
+              updateNode(id);
+            }
+            broadcastAdd(id);
+          };
+          if (img.complete) finalize();
+          else img.onload = finalize;
           togglePopover(false);
         };
         reader.readAsDataURL(file);
         imgUploadInput.value = '';
       });
 
-      // resize positions on window resize
       window.addEventListener('resize', () => {
-        const layerRect = imageLayer.getBoundingClientRect();
-        images.forEach((rec, id) => {
-          const node = imgNodes.get(id);
-          if (!node) return;
-          const nodeRect = node.getBoundingClientRect();
-          rec.x = Math.max(-nodeRect.width / 2, Math.min(rec.x, layerRect.width  - nodeRect.width / 2));
-          rec.y = Math.max(-nodeRect.height / 2, Math.min(rec.y, layerRect.height - nodeRect.height / 2));
-          updateNodeVisual(id);
-        });
         if (selectedId) {
           const node = imgNodes.get(selectedId);
           if (node) positionToolbar(node);
         }
       });
-
-      // deselect on Escape
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') deselect();
+        if (e.key === 'Delete' && selectedId && document.activeElement !== textarea) {
+          deleteImage(selectedId);
+        }
       });
     </script>
   </body>
