@@ -1,691 +1,165 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>live pad · real-time notepad</title>
-  <!-- Font & minimal style (no heavy frameworks) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    :root {
-      --bg: #f8fafc;
-      --surface: #ffffff;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --primary: #0ea5e9;
-      --primary-light: #e0f2fe;
-      --danger: #ef4444;
-      --radius: 16px;
-      --shadow: 0 8px 30px rgba(0,0,0,0.05);
-    }
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      -webkit-font-smoothing: antialiased;
-    }
-    .app {
-      width: 100%;
-      max-width: 760px;
-      height: 100%;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
-      background: var(--surface);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      border: 1px solid var(--border);
-      overflow: hidden;
-    }
-    .header {
-      padding: 20px 24px 12px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .logo-icon {
-      background: var(--primary);
-      color: white;
-      width: 36px;
-      height: 36px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      font-weight: 600;
-    }
-    .logo h1 {
-      font-size: 1.3rem;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-    }
-    .room-badge {
-      background: var(--primary-light);
-      color: var(--primary);
-      padding: 6px 14px;
-      border-radius: 50px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      transition: 0.2s;
-      border: none;
-    }
-    .room-badge:hover {
-      background: #bae6fd;
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--danger);
-      display: inline-block;
-      transition: 0.2s;
-    }
-    .status-dot.online {
-      background: #22c55e;
-    }
-    .toolbar {
-      padding: 8px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      border-bottom: 1px solid var(--border);
-      background: #fcfcfd;
-      flex-wrap: wrap;
-    }
-    .toolbar button {
-      background: none;
-      border: none;
-      font-family: inherit;
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: 8px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: 0.15s;
-    }
-    .toolbar button:hover {
-      background: #f1f5f9;
-      color: var(--text);
-    }
-    .toolbar button.active {
-      background: var(--primary-light);
-      color: var(--primary);
-    }
-    .toolbar .spacer {
-      flex: 1;
-    }
-    .toolbar .hint {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .editor-wrapper {
-      flex: 1;
-      padding: 20px 24px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    textarea {
-      width: 100%;
-      height: 100%;
-      resize: none;
-      border: none;
-      outline: none;
-      font-family: 'Inter', system-ui, sans-serif;
-      font-size: 1rem;
-      line-height: 1.6;
-      color: var(--text);
-      background: transparent;
-      padding: 8px 0;
-    }
-    textarea::placeholder {
-      color: #cbd5e1;
-    }
-    .footer {
-      padding: 12px 24px 16px 24px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .footer-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .sync-indicator {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .sync-indicator .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #cbd5e1;
-    }
-    .sync-indicator .dot.active {
-      background: #22c55e;
-      box-shadow: 0 0 8px #22c55e80;
-    }
-    .sync-indicator .dot.syncing {
-      background: #eab308;
-      animation: pulse 1s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 0.4; }
-      50% { opacity: 1; }
-      100% { opacity: 0.4; }
-    }
-    .copy-btn {
-      background: none;
-      border: 1px solid var(--border);
-      padding: 4px 12px;
-      border-radius: 50px;
-      font-size: 0.7rem;
-      font-weight: 500;
-      color: var(--text-muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      transition: 0.15s;
-      background: white;
-    }
-    .copy-btn:hover {
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--text);
-      color: white;
-      padding: 10px 20px;
-      border-radius: 50px;
-      font-size: 0.85rem;
-      font-weight: 500;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-      opacity: 0;
-      transition: opacity 0.25s;
-      pointer-events: none;
-      z-index: 999;
-    }
-    .toast.show {
-      opacity: 1;
-    }
-    .char-count {
-      font-variant-numeric: tabular-nums;
-    }
-    @media (max-width: 500px) {
-      body { padding: 8px; }
-      .header { padding: 16px; }
-      .toolbar { padding: 6px 16px; }
-      .editor-wrapper { padding: 16px; }
-      .footer { padding: 10px 16px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <!-- Header: logo + room name + connection status -->
-    <div class="header">
-      <div class="logo">
-        <div class="logo-icon">✏️</div>
-        <h1>live pad</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>eez — live notepad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+  </head>
+  <body class="bg-slate-950 text-slate-100 h-screen flex flex-col font-sans">
+    
+    <!-- Top Bar -->
+    <header class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur">
+      <div class="flex items-center gap-3">
+        <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" id="status-dot"></div>
+        <h1 class="font-semibold text-lg tracking-tight">eez pad</h1>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400" id="peer-count">1 online</span>
       </div>
-      <button class="room-badge" id="roomBtn" title="Click to copy invite link">
-        <span id="roomLabel">general</span>
-        <span id="connDot" class="status-dot"></span>
-      </button>
-    </div>
-
-    <!-- Toolbar: room controls / quick actions -->
-    <div class="toolbar">
-      <button id="randomRoomBtn" title="Join a random room">
-        🎲 random
-      </button>
-      <button id="clearBtn" title="Clear the pad (local only)">
-        🧹 clear
-      </button>
-      <div class="spacer"></div>
-      <span class="hint">
-        <span>share link to collaborate</span>
-      </span>
-    </div>
-
-    <!-- Main editor -->
-    <div class="editor-wrapper">
-      <textarea id="pad" placeholder="Start typing… anyone with the same room link will see your edits in real time." autofocus></textarea>
-    </div>
-
-    <!-- Footer: sync status + char count + copy button -->
-    <div class="footer">
-      <div class="footer-left">
-        <div class="sync-indicator">
-          <span class="dot" id="syncDot"></span>
-          <span id="syncText">connecting…</span>
-        </div>
-        <span class="char-count" id="charCount">0 chars</span>
+      <div class="flex items-center gap-3">
+        <button id="copy-btn" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition">Share Room</button>
+        <button id="clear-btn" class="text-xs px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition">Clear</button>
       </div>
-      <button class="copy-btn" id="copyLinkBtn">
-        🔗 copy invite link
-      </button>
-    </div>
-  </div>
+    </header>
 
-  <div id="toast" class="toast">link copied</div>
+    <!-- Main Notepad Area -->
+    <main class="flex-1 relative p-6 max-w-4xl w-full mx-auto flex flex-col">
+      <textarea
+        id="notepad"
+        placeholder="Start typing... anyone with this room link will see your words instantly as they appear."
+        class="flex-1 w-full bg-transparent resize-none outline-none text-lg leading-relaxed placeholder:text-slate-600 font-mono"
+      ></textarea>
+    </main>
 
-  <!-- MQTT.js from CDN (same as original eez) -->
-  <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+    <!-- Footer Status -->
+    <footer class="px-6 py-3 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center bg-slate-900/30">
+      <span id="sync-status">Connected to live stream</span>
+      <span id="char-count">0 characters</span>
+    </footer>
 
-  <script>
-    (function() {
-      // --- Configuration ---
-      const MQTT_URL = 'wss://broker.emqx.io:8084/mqtt';
-      // topic prefix for notepad rooms (custom)
-      const TOPIC_PREFIX = 'notepad/v1/room/';
-      const BASE_TOPIC = 'notepad/v1/rooms'; // for announcing room existence (optional)
+    <!-- Script -->
+    <script>
+      // 1. Room ID from URL hash or default to a shared public room
+      const roomId = window.location.hash.slice(1) || 'eez-notepad-default-room';
+      if (!window.location.hash) window.location.hash = roomId;
 
-      // --- DOM refs ---
-      const pad = document.getElementById('pad');
-      const roomLabel = document.getElementById('roomLabel');
-      const connDot = document.getElementById('connDot');
-      const syncDot = document.getElementById('syncDot');
-      const syncText = document.getElementById('syncText');
-      const charCount = document.getElementById('charCount');
-      const roomBtn = document.getElementById('roomBtn');
-      const copyLinkBtn = document.getElementById('copyLinkBtn');
-      const randomRoomBtn = document.getElementById('randomRoomBtn');
-      const clearBtn = document.getElementById('clearBtn');
-      const toast = document.getElementById('toast');
+      const textarea = document.getElementById('notepad');
+      const statusDot = document.getElementById('status-dot');
+      const syncStatus = document.getElementById('sync-status');
+      const peerCountEl = document.getElementById('peer-count');
+      const charCountEl = document.getElementById('char-count');
+      const copyBtn = document.getElementById('copy-btn');
+      const clearBtn = document.getElementById('clear-btn');
 
-      // --- State ---
-      let roomId = null;
-      let mqttClient = null;
-      let isConnected = false;
-      let isPublishing = false; // prevent feedback loop from remote updates
-      let currentText = '';
-      let lastPublishedText = '';
-      let publishTimeout = null;
-      let reconnectTimer = null;
+      const clientId = 'notepad_' + Math.random().toString(36).slice(2, 9);
+      const topic = 'eez/v1/notepad/' + encodeURIComponent(roomId);
 
-      // --- Helper: extract room from hash (e.g. #/r/my-room) ---
-      function getRoomFromHash() {
-        const hash = window.location.hash.replace(/^#/, '');
-        // Support both #/r/roomname and #roomname (simplified)
-        if (hash.startsWith('/r/')) return hash.slice(3);
-        if (hash.startsWith('r/')) return hash.slice(2);
-        // fallback: if hash looks like a room name (no slashes), use it
-        if (hash && !hash.includes('/')) return hash;
-        return null;
-      }
+      let isRemoteUpdate = false;
+      let peers = new Set([clientId]);
 
-      // --- Update URL hash with room ---
-      function setRoomInHash(room) {
-        window.history.replaceState(null, '', '#/r/' + encodeURIComponent(room));
-        // update label
-        roomLabel.textContent = room;
-        document.title = `live pad · ${room}`;
-      }
+      // 2. Connect to MQTT Broker (same as eez chat)
+      const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+        clientId,
+        clean: true,
+        connectTimeout: 5000,
+      });
 
-      // --- Show toast ---
-      let toastTimer = null;
-      function showToast(msg) {
-        toast.textContent = msg;
-        toast.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
-      }
+      client.on('connect', () => {
+        statusDot.className = "h-3 w-3 rounded-full bg-emerald-500";
+        syncStatus.textContent = "Live sync active";
+        client.subscribe(topic);
+        // Announce presence
+        client.publish(topic, JSON.stringify({ type: 'join', clientId }));
+      });
 
-      // --- Update connection UI ---
-      function updateConnectionStatus(connected) {
-        isConnected = connected;
-        connDot.classList.toggle('online', connected);
-        syncDot.classList.toggle('active', connected);
-        syncDot.classList.remove('syncing');
-        if (connected) {
-          syncText.textContent = 'live';
-        } else {
-          syncText.textContent = 'offline';
-        }
-      }
+      client.on('reconnect', () => {
+        statusDot.className = "h-3 w-3 rounded-full bg-amber-500 animate-pulse";
+        syncStatus.textContent = "Reconnecting...";
+      });
 
-      // --- Update sync indicator while publishing ---
-      function setSyncing(syncing) {
-        if (!isConnected) return;
-        syncDot.classList.toggle('syncing', syncing);
-        syncText.textContent = syncing ? 'syncing…' : 'live';
-      }
+      client.on('offline', () => {
+        statusDot.className = "h-3 w-3 rounded-full bg-rose-500";
+        syncStatus.textContent = "Offline";
+      });
 
-      // --- Update character count ---
-      function updateCharCount(text) {
-        const len = text.length;
-        charCount.textContent = `${len} char${len === 1 ? '' : 's'}`;
-      }
-
-      // --- Publish the current pad content to MQTT (with debounce) ---
-      function publishContent(immediate = false) {
-        if (!mqttClient || !mqttClient.connected || !roomId) return;
-
-        const textToSend = pad.value;
-        if (textToSend === lastPublishedText && !immediate) return;
-
-        if (publishTimeout) {
-          clearTimeout(publishTimeout);
-          publishTimeout = null;
-        }
-
-        const doPublish = () => {
-          if (!mqttClient || !mqttClient.connected) return;
-          setSyncing(true);
-          try {
-            const payload = JSON.stringify({
-              type: 'text_update',
-              room: roomId,
-              content: textToSend,
-              sender: 'pad_' + Math.random().toString(36).slice(2, 8),
-              timestamp: Date.now(),
-            });
-            mqttClient.publish(TOPIC_PREFIX + roomId, payload, { qos: 0 }, (err) => {
-              if (err) console.warn('publish error', err);
-              lastPublishedText = textToSend;
-              setSyncing(false);
-            });
-          } catch (e) {
-            console.warn(e);
-            setSyncing(false);
-          }
-        };
-
-        if (immediate) {
-          doPublish();
-        } else {
-          setSyncing(true);
-          publishTimeout = setTimeout(doPublish, 150); // debounce 150ms
-        }
-      }
-
-      // --- Handle incoming MQTT messages ---
-      function onMqttMessage(topic, message) {
+      // 3. Handle Incoming Data
+      client.on('message', (t, payload) => {
         try {
-          const payload = JSON.parse(message.toString());
-          // Only care about text updates for our room
-          if (payload.type === 'text_update' && payload.room === roomId) {
-            // Ignore our own echo (but MQTT doesn't echo to publisher, but just in case)
-            if (payload.content === lastPublishedText) return;
-
-            // Avoid overwriting if the incoming text is identical to local
-            if (payload.content === pad.value) return;
-
-            // Save selection/cursor position
-            const start = pad.selectionStart;
-            const end = pad.selectionEnd;
-
-            // Apply remote content
-            isPublishing = true; // prevent publish loop
-            pad.value = payload.content;
-            currentText = payload.content;
-            updateCharCount(currentText);
-
-            // Try to restore cursor position (if possible)
-            try {
-              pad.setSelectionRange(start, end);
-            } catch (e) {}
-
-            lastPublishedText = payload.content; // sync last published to remote
-            isPublishing = false;
+          const data = JSON.parse(payload.toString());
+          
+          if (data.type === 'join' || data.type === 'ping') {
+            peers.add(data.clientId);
+            updatePeerCount();
+            // Reply with current state if we are the veteran
+            if (data.type === 'join' && textarea.value) {
+              client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
+            }
+          } else if (data.type === 'state' && !textarea.value) {
+            isRemoteUpdate = true;
+            textarea.value = data.content;
+            updateStats();
+            isRemoteUpdate = false;
+          } else if (data.type === 'text_update' && data.clientId !== clientId) {
+            isRemoteUpdate = true;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            
+            textarea.value = data.content;
+            
+            // Try to preserve cursor position gracefully
+            try { textarea.setSelectionRange(start, end); } catch(e) {}
+            
+            updateStats();
+            isRemoteUpdate = false;
+          } else if (data.type === 'clear') {
+            isRemoteUpdate = true;
+            textarea.value = '';
+            updateStats();
+            isRemoteUpdate = false;
           }
-        } catch (e) {
-          // ignore non-JSON or malformed
+        } catch (e) {}
+      });
+
+      // 4. Broadcast Local Typing
+      textarea.addEventListener('input', () => {
+        if (isRemoteUpdate) return;
+        updateStats();
+        
+        client.publish(topic, JSON.stringify({
+          type: 'text_update',
+          content: textarea.value,
+          clientId
+        }));
+      });
+
+      function updateStats() {
+        const text = textarea.value;
+        charCountEl.textContent = text.length + " characters";
+      }
+
+      function updatePeerCount() {
+        peerCountEl.textContent = peers.size + (peers.size === 1 ? " online" : " online");
+      }
+
+      // 5. Actions
+      copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(window.location.href);
+        copyBtn.textContent = "Copied Link!";
+        setTimeout(() => copyBtn.textContent = "Share Room", 2000);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        textarea.value = '';
+        updateStats();
+        client.publish(topic, JSON.stringify({ type: 'clear', clientId }));
+      });
+
+      // Periodic presence ping
+      setInterval(() => {
+        if (client.connected) {
+          client.publish(topic, JSON.stringify({ type: 'ping', clientId }));
         }
-      }
-
-      // --- Connect to MQTT broker ---
-      function connectMQTT() {
-        if (mqttClient) {
-          try { mqttClient.end(true); } catch (e) {}
-          mqttClient = null;
-        }
-
-        const clientId = 'pad_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
-
-        try {
-          mqttClient = window.mqtt.connect(MQTT_URL, {
-            clientId,
-            keepalive: 30,
-            reconnectPeriod: 2500,
-            connectTimeout: 10000,
-            clean: true,
-          });
-        } catch (e) {
-          console.error('MQTT connect failed', e);
-          updateConnectionStatus(false);
-          scheduleReconnect();
-          return;
-        }
-
-        mqttClient.on('connect', () => {
-          console.log('MQTT connected');
-          updateConnectionStatus(true);
-          // Subscribe to room topic
-          if (roomId) {
-            mqttClient.subscribe(TOPIC_PREFIX + roomId, { qos: 0 }, (err) => {
-              if (err) console.warn('subscribe error', err);
-              // After subscribing, publish our current content so others get in sync
-              // But only if we have content or to announce presence
-              setTimeout(() => {
-                if (pad.value && mqttClient && mqttClient.connected) {
-                  publishContent(true);
-                }
-              }, 300);
-            });
-          }
-          // Also subscribe to global room announce topic? not needed for core
-        });
-
-        mqttClient.on('message', onMqttMessage);
-
-        mqttClient.on('reconnect', () => {
-          updateConnectionStatus(false);
-          syncText.textContent = 'reconnecting…';
-        });
-
-        mqttClient.on('close', () => {
-          updateConnectionStatus(false);
-          syncText.textContent = 'disconnected';
-        });
-
-        mqttClient.on('error', (err) => {
-          console.warn('MQTT error', err);
-          updateConnectionStatus(false);
-        });
-      }
-
-      function scheduleReconnect() {
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(() => {
-          if (!mqttClient || !mqttClient.connected) {
-            connectMQTT();
-          }
-        }, 3000);
-      }
-
-      // --- Join a room: update hash, subscribe, reset state ---
-      function joinRoom(newRoomId) {
-        // Leave previous room (unsubscribe)
-        if (mqttClient && mqttClient.connected && roomId) {
-          try {
-            mqttClient.unsubscribe(TOPIC_PREFIX + roomId);
-          } catch (e) {}
-        }
-
-        roomId = newRoomId;
-        setRoomInHash(roomId);
-        // Clear pad for new room? Better to keep local content but it might be stale.
-        // We'll load empty and then rely on remote sync.
-        pad.value = '';
-        currentText = '';
-        lastPublishedText = '';
-        updateCharCount('');
-        // Connect / re-subscribe
-        if (!mqttClient || !mqttClient.connected) {
-          connectMQTT();
-        } else {
-          // Already connected, subscribe to new room
-          mqttClient.subscribe(TOPIC_PREFIX + roomId, { qos: 0 }, (err) => {
-            if (err) console.warn('subscribe error', err);
-            // Optionally publish an empty state? Not needed.
-            // But we can announce our presence with current content (empty)
-            // Or better: do nothing, we'll get remote updates.
-          });
-        }
-      }
-
-      // --- Generate random room name ---
-      function randomRoomName() {
-        const adjectives = ['cool', 'quiet', 'bright', 'swift', 'calm', 'bold', 'green', 'blue', 'red', 'sunny', 'misty', 'wild', 'urban', 'cozy', 'fresh', 'vivid', 'stellar', 'lunar'];
-        const nouns = ['pad', 'note', 'page', 'ink', 'quill', 'leaf', 'wave', 'stone', 'cloud', 'field', 'cove', 'peak', 'trail', 'grove', 'stream', 'vale', 'haven', 'nest'];
-        const a = adjectives[Math.floor(Math.random() * adjectives.length)];
-        const n = nouns[Math.floor(Math.random() * nouns.length)];
-        const num = Math.floor(Math.random() * 90 + 10);
-        return `${a}-${n}-${num}`;
-      }
-
-      // --- Copy current room link ---
-      function copyRoomLink() {
-        const url = window.location.origin + window.location.pathname + '#/r/' + encodeURIComponent(roomId);
-        navigator.clipboard.writeText(url).then(() => {
-          showToast('invite link copied');
-        }).catch(() => {
-          // fallback
-          prompt('Copy this link:', url);
-        });
-      }
-
-      // --- Initialize from hash or default room ---
-      function init() {
-        // Determine room from hash, or create a default one
-        let initialRoom = getRoomFromHash();
-        if (!initialRoom) {
-          // Default room name: 'general' or random? Use 'general' for simplicity.
-          initialRoom = 'general';
-          // But maybe better to random if no hash? Let's keep 'general' as friendly default.
-          // However, to avoid colliding with strangers, we can generate a random one.
-          // Let's generate a friendly random room for better privacy.
-          initialRoom = randomRoomName();
-        }
-        // Ensure room name is URL-safe and trimmed
-        initialRoom = initialRoom.trim().replace(/[^a-zA-Z0-9\-_]/g, '-').slice(0, 40) || 'general';
-
-        joinRoom(initialRoom);
-
-        // Set up event listeners
-        pad.addEventListener('input', () => {
-          const text = pad.value;
-          currentText = text;
-          updateCharCount(text);
-          if (isPublishing) return; // avoid loop
-          // Publish to MQTT with debounce
-          publishContent(false);
-        });
-
-        // On blur, publish immediately
-        pad.addEventListener('blur', () => {
-          if (currentText !== lastPublishedText) {
-            publishContent(true);
-          }
-        });
-
-        // Copy link button
-        copyLinkBtn.addEventListener('click', copyRoomLink);
-        roomBtn.addEventListener('click', copyRoomLink);
-
-        // Random room button
-        randomRoomBtn.addEventListener('click', () => {
-          const newRoom = randomRoomName();
-          joinRoom(newRoom);
-          showToast('joined random room');
-        });
-
-        // Clear button
-        clearBtn.addEventListener('click', () => {
-          if (!pad.value) return;
-          if (confirm('Clear the pad? (local only, others will still see their copy)')) {
-            pad.value = '';
-            currentText = '';
-            updateCharCount('');
-            publishContent(true); // clear for everyone
-            showToast('pad cleared');
-          }
-        });
-
-        // Update connection status periodically (in case mqtt state changes)
-        setInterval(() => {
-          if (mqttClient) {
-            updateConnectionStatus(mqttClient.connected);
-          }
-        }, 2000);
-
-        // Handle hash changes (e.g., user manually edits URL)
-        window.addEventListener('hashchange', () => {
-          const newRoom = getRoomFromHash();
-          if (newRoom && newRoom !== roomId) {
-            joinRoom(newRoom);
-          } else if (!newRoom) {
-            // If hash removed, go to default? we can keep current room.
-            // But we'll set hash again to current room.
-            setRoomInHash(roomId);
-          }
-        });
-
-        // Also handle page unload to leave? Not needed for MQTT.
-
-        // Update initial char count
-        updateCharCount(pad.value);
-      }
-
-      // Start the app
-      init();
-
-    })();
-  </script>
-</body>
+      }, 15000);
+    </script>
+  </body>
 </html>
