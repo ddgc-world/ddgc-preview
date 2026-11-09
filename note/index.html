@@ -3,61 +3,611 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>eez — live notepad</title>
+    <title>note</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
-  </head>
-  <body class="bg-slate-950 text-slate-100 h-screen flex flex-col font-sans">
-    
-    <!-- Top Bar -->
-    <header class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur">
-      <div class="flex items-center gap-3">
-        <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" id="status-dot"></div>
-        <h1 class="font-semibold text-lg tracking-tight">eez pad</h1>
-        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400" id="peer-count">1 online</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <button id="copy-btn" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition">Share Room</button>
-        <button id="clear-btn" class="text-xs px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition">Clear</button>
-      </div>
-    </header>
+    <style>
+      html, body { background:#000; height:100%; margin:0; padding:0; overflow:hidden; }
+      #notepad { caret-color:#34d399; }
+      #notepad::placeholder { color:#1e293b; font-style:italic; font-weight:300; }
+      #notepad::-webkit-scrollbar { width:6px; }
+      #notepad::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
 
-    <!-- Main Notepad Area -->
-    <main class="flex-1 relative p-6 max-w-4xl w-full mx-auto flex flex-col">
-      <textarea
-        id="notepad"
-        placeholder="Start typing... anyone with this room link will see your words instantly as they appear."
-        class="flex-1 w-full bg-transparent resize-none outline-none text-lg leading-relaxed placeholder:text-slate-600 font-mono"
-      ></textarea>
+      /* status area */
+      #status-area {
+        position:fixed; top:1rem; right:1rem;
+        display:flex; align-items:center; gap:.45rem;
+        z-index:200; cursor:pointer; user-select:none;
+        padding:.25rem .5rem; border-radius:.4rem;
+        transition:background .15s;
+      }
+      #status-area:hover { background:#0f0f0f; }
+      #status-area .dot {
+        width:.55rem; height:.55rem; border-radius:50%; background:#10b981;
+        box-shadow:0 0 8px #10b98188; transition:background-color .3s, box-shadow .3s;
+        pointer-events:none;
+      }
+      #status-area .dot.reconnecting { background:#f59e0b; box-shadow:0 0 6px #f59e0b88; }
+      #status-area .dot.offline { background:#ef4444; box-shadow:0 0 5px #ef444488; }
+      #status-area #online-count {
+        color:#94a3b8; font-size:.7rem; font-family:'SF Mono', monospace;
+        letter-spacing:.02em; pointer-events:none; white-space:nowrap;
+      }
+
+      /* typing indicator */
+      #typing-indicator {
+        position:fixed; bottom:1rem; left:1rem;
+        display:flex; align-items:center; gap:.4rem;
+        font-size:.7rem; color:#64748b; font-family:'SF Mono', monospace;
+        z-index:100; pointer-events:none; user-select:none;
+        opacity:0; transition:opacity .2s ease;
+      }
+      #typing-indicator.visible { opacity:1; }
+      #typing-indicator .dots { display:inline-flex; gap:.15rem; align-items:center; }
+      #typing-indicator .dots span {
+        width:.25rem; height:.25rem; border-radius:50%;
+        background:#34d399; animation:typing-bounce 1.2s infinite ease-in-out;
+      }
+      #typing-indicator .dots span:nth-child(2) { animation-delay:.15s; }
+      #typing-indicator .dots span:nth-child(3) { animation-delay:.3s; }
+      @keyframes typing-bounce {
+        0%, 60%, 100% { transform:translateY(0); opacity:.4; }
+        30% { transform:translateY(-3px); opacity:1; }
+      }
+
+      /* image popover */
+      #image-popover {
+        position:fixed; top:3.5rem; right:1rem;
+        background:#0a0a0a; border:1px solid #1e293b; border-radius:.6rem;
+        padding:.75rem; z-index:150;
+        box-shadow:0 10px 40px rgba(0,0,0,.8);
+        display:none; flex-direction:column; gap:.5rem;
+        width:15rem;
+      }
+      #image-popover.open { display:flex; }
+      .img-upload-btn {
+        display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+        background:#111; border:1px solid #1e293b; color:#94a3b8; font-size:.75rem;
+        padding:.5rem .7rem; border-radius:.4rem; cursor:pointer; width:100%;
+        transition:background .12s, border-color .12s, color .12s;
+      }
+      .img-upload-btn:hover { background:#1e293b; color:#e2e8f0; border-color:#334155; }
+
+      /* editor layout */
+      #editor-wrap { position:relative; flex:1; width:100%; }
+      #notepad {
+        position:relative; width:100%; height:100%;
+        background:transparent; resize:none; outline:none;
+        font-family: 'SF Mono', 'Fira Code', monospace;
+        font-size:1.125rem; line-height:1.7;
+        color:#e2e8f0; padding:1.5rem;
+        z-index:2;
+      }
+      #notepad::placeholder { color:#1e293b; font-style:italic; font-weight:300; }
+      #notepad::-webkit-scrollbar { width:6px; }
+      #notepad::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
+
+      /* image layer — separate from textarea, images are absolutely positioned */
+      #image-layer {
+        position:absolute; inset:0;
+        overflow:hidden;
+        z-index:1;
+        pointer-events:none;
+      }
+
+      /* each image node */
+      .img-node {
+        position:absolute;
+        pointer-events:auto;
+        cursor:grab;
+        user-select:none;
+        touch-action:none;
+        transition:box-shadow .15s, outline-color .15s;
+        outline:2px solid transparent;
+        outline-offset:2px;
+      }
+      .img-node.selected {
+        outline-color:#34d399;
+      }
+      .img-node.dragging {
+        cursor:grabbing;
+        z-index:9999 !important;
+      }
+      .img-node img {
+        display:block;
+        pointer-events:none;
+        border-radius:.5rem;
+        border:1px solid #1e293b;
+        box-shadow:0 4px 20px rgba(0,0,0,.5);
+      }
+      .img-node .remove {
+        position:absolute; top:-8px; right:-8px;
+        width:18px; height:18px;
+        background:#0f0f0f; border:1px solid #1e293b;
+        border-radius:50%; color:#f87171; font-size:11px;
+        display:none; align-items:center; justify-content:center;
+        cursor:pointer; line-height:1; padding:0;
+        z-index:10;
+      }
+      .img-node.selected .remove,
+      .img-node:hover .remove { display:flex; }
+      .img-node .remove:hover { background:#450a0a; color:#fca5a5; border-color:#7f1d1d; }
+
+      /* resize handle */
+      .img-node .resize-handle {
+        position:absolute; bottom:-6px; right:-6px;
+        width:14px; height:14px;
+        background:#10b981; border:2px solid #052e16;
+        border-radius:50%; cursor:nwse-resize;
+        display:none;
+        z-index:10;
+        pointer-events:auto;
+      }
+      .img-node.selected .resize-handle { display:block; }
+
+      /* selection toolbar (floating) */
+      #img-toolbar {
+        position:fixed; z-index:300;
+        background:#0a0a0a; border:1px solid #1e293b;
+        border-radius:.5rem;
+        display:none;
+        flex-direction:row;
+        gap:.15rem;
+        padding:.25rem;
+        box-shadow:0 10px 30px rgba(0,0,0,.8);
+        user-select:none;
+      }
+      #img-toolbar.open { display:flex; }
+      #img-toolbar button {
+        background:transparent; border:none; color:#94a3b8;
+        font-size:.65rem; padding:.3rem .45rem;
+        border-radius:.3rem; cursor:pointer;
+        font-family:'SF Mono', monospace;
+        transition:background .12s, color .12s;
+        white-space:nowrap;
+      }
+      #img-toolbar button:hover { background:#1e293b; color:#e2e8f0; }
+      #img-toolbar button.danger { color:#f87171; }
+      #img-toolbar button.danger:hover { background:#450a0a; color:#fca5a5; }
+      #img-toolbar .sep {
+        width:1px; background:#1e293b; margin:.15rem .1rem;
+      }
+
+      @keyframes soft-pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+      .animate-soft-pulse { animation:soft-pulse 2s infinite ease-in-out; }
+    </style>
+  </head>
+  <body class="bg-black text-slate-100 h-screen flex flex-col font-sans">
+
+    <div id="status-area" title="insert image">
+      <div class="dot animate-soft-pulse" id="status-dot"></div>
+      <span id="online-count">1</span>
+    </div>
+
+    <div id="typing-indicator">
+      <span id="typing-text"></span>
+      <span class="dots"><span></span><span></span><span></span></span>
+    </div>
+
+    <div id="image-popover">
+      <label class="img-upload-btn" for="img-upload-input"><span>📷</span> insert image</label>
+      <input type="file" id="img-upload-input" accept="image/*" style="display:none" />
+    </div>
+
+    <!-- floating image toolbar (appears on selection) -->
+    <div id="img-toolbar">
+      <button data-act="front" title="bring to front (above all text/images)">front</button>
+      <button data-act="back" title="send to back">back</button>
+      <div class="sep"></div>
+      <button data-act="inline" title="insert as inline token in text — click in textarea to place, then choose behind/inline">inline</button>
+      <div class="sep"></div>
+      <button data-act="smaller" title="smaller">−</button>
+      <button data-act="bigger" title="bigger">+</button>
+      <div class="sep"></div>
+      <button data-act="remove" class="danger" title="remove image">✕</button>
+    </div>
+
+    <main class="flex-1 relative w-full mx-auto flex flex-col" style="padding:0;">
+      <div id="editor-wrap">
+        <div id="image-layer"></div>
+        <textarea
+          id="notepad"
+          placeholder="start typing..."
+          spellcheck="false"
+          autofocus
+        ></textarea>
+      </div>
     </main>
 
-    <!-- Footer Status -->
-    <footer class="px-6 py-3 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center bg-slate-900/30">
-      <span id="sync-status">Connected to live stream</span>
-      <span id="char-count">0 characters</span>
-    </footer>
-
-    <!-- Script -->
     <script>
-      // 1. Room ID from URL hash or default to a shared public room
+      // ===== SYNC LOGIC =====
       const roomId = window.location.hash.slice(1) || 'eez-notepad-default-room';
       if (!window.location.hash) window.location.hash = roomId;
 
       const textarea = document.getElementById('notepad');
+      const imageLayer = document.getElementById('image-layer');
       const statusDot = document.getElementById('status-dot');
-      const syncStatus = document.getElementById('sync-status');
-      const peerCountEl = document.getElementById('peer-count');
-      const charCountEl = document.getElementById('char-count');
-      const copyBtn = document.getElementById('copy-btn');
-      const clearBtn = document.getElementById('clear-btn');
+      const onlineCountEl = document.getElementById('online-count');
+      const typingIndicator = document.getElementById('typing-indicator');
+      const typingText = document.getElementById('typing-text');
+      const imgToolbar = document.getElementById('img-toolbar');
 
       const clientId = 'notepad_' + Math.random().toString(36).slice(2, 9);
       const topic = 'eez/v1/notepad/' + encodeURIComponent(roomId);
 
       let isRemoteUpdate = false;
       let peers = new Set([clientId]);
+      let peerLastSeen = new Map();
+      let typingPeers = new Map();
 
-      // 2. Connect to MQTT Broker (same as eez chat)
+      // images: id -> { dataUrl, x, y, w, h, z, sel }
+      // w/h = width/height (in px). If null, use natural.
+      // z = z-index (default 1)
+      const images = new Map();
+      let selectedId = null;
+
+      const TYPING_TIMEOUT_MS = 2500;
+      const TYPING_BROADCAST_MS = 1000;
+      let lastTypingSent = 0;
+
+      function updateOnlineCount() { onlineCountEl.textContent = peers.size; }
+      updateOnlineCount();
+
+      function renderTypingIndicator() {
+        const now = Date.now();
+        for (const [id, ts] of typingPeers.entries()) {
+          if (now - ts > TYPING_TIMEOUT_MS) typingPeers.delete(id);
+        }
+        const count = typingPeers.size;
+        if (count === 0) {
+          typingIndicator.classList.remove('visible');
+          typingText.textContent = '';
+        } else {
+          typingIndicator.classList.add('visible');
+          typingText.textContent = count === 1 ? 'someone is typing' : count + ' people are typing';
+        }
+      }
+
+      // ===== IMAGE NODES =====
+      const imgNodes = new Map(); // id -> DOM element
+
+      function getNode(id) {
+        if (imgNodes.has(id)) return imgNodes.get(id);
+        const rec = images.get(id);
+        if (!rec) return null;
+
+        const node = document.createElement('div');
+        node.className = 'img-node';
+        node.dataset.id = id;
+
+        const img = document.createElement('img');
+        img.src = rec.dataUrl;
+        img.alt = '';
+        img.draggable = false;
+        img.style.width = rec.w ? rec.w + 'px' : 'auto';
+        img.style.height = rec.h ? rec.h + 'px' : 'auto';
+        node.appendChild(img);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove';
+        removeBtn.textContent = '✕';
+        removeBtn.title = 'remove image';
+        removeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteImage(id);
+        });
+        node.appendChild(removeBtn);
+
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'resize-handle';
+        node.appendChild(resizeHandle);
+        attachResize(resizeHandle, node, id);
+
+        // position
+        node.style.left = (rec.x || 40) + 'px';
+        node.style.top  = (rec.y || 40) + 'px';
+        node.style.zIndex = rec.z || 1;
+
+        // selection + drag
+        attachDragAndSelect(node, id);
+
+        imageLayer.appendChild(node);
+        imgNodes.set(id, node);
+        return node;
+      }
+
+      function removeNode(id) {
+        const n = imgNodes.get(id);
+        if (n) { n.remove(); imgNodes.delete(id); }
+        if (selectedId === id) {
+          selectedId = null;
+          imgToolbar.classList.remove('open');
+        }
+      }
+
+      function updateNodeVisual(id) {
+        const rec = images.get(id);
+        const node = imgNodes.get(id);
+        if (!rec || !node) return;
+        node.style.left = rec.x + 'px';
+        node.style.top  = rec.y + 'px';
+        node.style.zIndex = rec.z || 1;
+        const img = node.querySelector('img');
+        if (img) {
+          img.style.width = rec.w ? rec.w + 'px' : 'auto';
+          img.style.height = rec.h ? rec.h + 'px' : 'auto';
+        }
+      }
+
+      function renderImages() {
+        images.forEach((rec, id) => getNode(id));
+        for (const id of [...imgNodes.keys()]) {
+          if (!images.has(id)) removeNode(id);
+        }
+      }
+
+      function broadcastImageAdd(id) {
+        if (!client.connected) return;
+        const rec = images.get(id);
+        if (!rec) return;
+        client.publish(topic, JSON.stringify({
+          type: 'image_add', id, dataUrl: rec.dataUrl,
+          x: rec.x, y: rec.y, w: rec.w, h: rec.h, z: rec.z,
+          clientId
+        }));
+      }
+
+      function broadcastImageUpdate(id) {
+        if (!client.connected) return;
+        const rec = images.get(id);
+        if (!rec) return;
+        client.publish(topic, JSON.stringify({
+          type: 'image_update', id,
+          x: rec.x, y: rec.y, w: rec.w, h: rec.h, z: rec.z,
+          clientId
+        }));
+      }
+
+      function deleteImage(id) {
+        images.delete(id);
+        removeNode(id);
+        if (client.connected) {
+          client.publish(topic, JSON.stringify({ type: 'image_remove', id, clientId }));
+        }
+      }
+
+      // ===== SELECTION =====
+      function selectImage(id) {
+        if (selectedId && selectedId !== id) {
+          const prev = imgNodes.get(selectedId);
+          if (prev) prev.classList.remove('selected');
+        }
+        selectedId = id;
+        const node = imgNodes.get(id);
+        if (node) {
+          node.classList.add('selected');
+          positionToolbar(node);
+        }
+      }
+
+      function deselect() {
+        if (selectedId) {
+          const prev = imgNodes.get(selectedId);
+          if (prev) prev.classList.remove('selected');
+        }
+        selectedId = null;
+        imgToolbar.classList.remove('open');
+      }
+
+      function positionToolbar(node) {
+        const r = node.getBoundingClientRect();
+        imgToolbar.classList.add('open');
+        // measure toolbar width after making visible
+        const tw = imgToolbar.offsetWidth || 280;
+        const th = imgToolbar.offsetHeight || 32;
+        let left = r.left + r.width / 2 - tw / 2;
+        let top  = r.top - th - 8;
+        // keep onscreen
+        left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+        if (top < 8) top = r.bottom + 8;
+        imgToolbar.style.left = left + 'px';
+        imgToolbar.style.top  = top + 'px';
+      }
+
+      // click empty area → deselect
+      document.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.img-node')) return;
+        if (e.target.closest('#img-toolbar')) return;
+        deselect();
+      });
+
+      // ===== DRAG + SELECT =====
+      function attachDragAndSelect(node, id) {
+        let dragStartX, dragStartY, origX, origY, moved;
+
+        function onPointerDown(e) {
+          if (e.target.classList.contains('remove')) return;
+          if (e.target.classList.contains('resize-handle')) return;
+          if (e.button !== undefined && e.button !== 0) return;
+          e.preventDefault();
+
+          // select this image
+          selectImage(id);
+
+          const p = e.touches ? e.touches[0] : e;
+          dragStartX = p.clientX;
+          dragStartY = p.clientY;
+          const rec = images.get(id);
+          if (!rec) return;
+          origX = rec.x;
+          origY = rec.y;
+          moved = false;
+          node.classList.add('dragging');
+
+          window.addEventListener('mousemove', onPointerMove);
+          window.addEventListener('mouseup', onPointerUp);
+          window.addEventListener('touchmove', onPointerMove, { passive: false });
+          window.addEventListener('touchend', onPointerUp);
+        }
+
+        function onPointerMove(e) {
+          if (dragStartX === undefined) return;
+          const p = e.touches ? e.touches[0] : e;
+          const dx = p.clientX - dragStartX;
+          const dy = p.clientY - dragStartY;
+          if (Math.abs(dx) > 2 || Math.abs(dy) > 2) moved = true;
+          if (e.cancelable) e.preventDefault();
+
+          const rec = images.get(id);
+          if (!rec) return;
+          const layerRect = imageLayer.getBoundingClientRect();
+          const nodeRect = node.getBoundingClientRect();
+
+          let nx = origX + dx;
+          let ny = origY + dy;
+          nx = Math.max(-nodeRect.width / 2, Math.min(nx, layerRect.width  - nodeRect.width / 2));
+          ny = Math.max(-nodeRect.height / 2, Math.min(ny, layerRect.height - nodeRect.height / 2));
+
+          rec.x = nx;
+          rec.y = ny;
+          node.style.left = nx + 'px';
+          node.style.top  = ny + 'px';
+
+          // keep toolbar following
+          if (selectedId === id) positionToolbar(node);
+        }
+
+        function onPointerUp() {
+          node.classList.remove('dragging');
+          window.removeEventListener('mousemove', onPointerMove);
+          window.removeEventListener('mouseup', onPointerUp);
+          window.removeEventListener('touchmove', onPointerMove);
+          window.removeEventListener('touchend', onPointerUp);
+          if (moved) broadcastImageUpdate(id);
+          dragStartX = dragStartY = undefined;
+        }
+
+        node.addEventListener('mousedown', onPointerDown);
+        node.addEventListener('touchstart', onPointerDown, { passive: false });
+      }
+
+      // ===== RESIZE =====
+      function attachResize(handle, node, id) {
+        let startX, startY, startW, startH, aspect;
+
+        function onDown(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          const p = e.touches ? e.touches[0] : e;
+          startX = p.clientX;
+          startY = p.clientY;
+          const rect = node.getBoundingClientRect();
+          startW = rect.width;
+          startH = rect.height;
+          aspect = startW / startH;
+
+          window.addEventListener('mousemove', onMove);
+          window.addEventListener('mouseup', onUp);
+          window.addEventListener('touchmove', onMove, { passive: false });
+          window.addEventListener('touchend', onUp);
+        }
+
+        function onMove(e) {
+          const p = e.touches ? e.touches[0] : e;
+          const dx = p.clientX - startX;
+          const dy = p.clientY - startY;
+          if (e.cancelable) e.preventDefault();
+
+          let newW = startW + dx;
+          let newH = startH + dy;
+
+          // maintain aspect ratio (use larger axis)
+          if (Math.abs(dx) > Math.abs(dy)) {
+            newH = newW / aspect;
+          } else {
+            newW = newH * aspect;
+          }
+          newW = Math.max(40, newW);
+          newH = Math.max(40, newH);
+
+          const rec = images.get(id);
+          if (!rec) return;
+          rec.w = newW;
+          rec.h = newH;
+          node.querySelector('img').style.width = newW + 'px';
+          node.querySelector('img').style.height = newH + 'px';
+
+          if (selectedId === id) positionToolbar(node);
+        }
+
+        function onUp() {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup', onUp);
+          window.removeEventListener('touchmove', onMove);
+          window.removeEventListener('touchend', onUp);
+          broadcastImageUpdate(id);
+        }
+
+        handle.addEventListener('mousedown', onDown);
+        handle.addEventListener('touchstart', onDown, { passive: false });
+      }
+
+      // ===== TOOLBAR ACTIONS =====
+      imgToolbar.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || !selectedId) return;
+        const act = btn.dataset.act;
+        const rec = images.get(selectedId);
+        if (!rec) return;
+
+        if (act === 'front') {
+          rec.z = 100;
+          updateNodeVisual(selectedId);
+          broadcastImageUpdate(selectedId);
+        } else if (act === 'back') {
+          rec.z = 0;
+          updateNodeVisual(selectedId);
+          broadcastImageUpdate(selectedId);
+        } else if (act === 'bigger') {
+          rec.w = (rec.w || 320) * 1.15;
+          rec.h = (rec.h || 240) * 1.15;
+          updateNodeVisual(selectedId);
+          broadcastImageUpdate(selectedId);
+          positionToolbar(imgNodes.get(selectedId));
+        } else if (act === 'smaller') {
+          rec.w = Math.max(40, (rec.w || 320) / 1.15);
+          rec.h = Math.max(40, (rec.h || 240) / 1.15);
+          updateNodeVisual(selectedId);
+          broadcastImageUpdate(selectedId);
+          positionToolbar(imgNodes.get(selectedId));
+        } else if (act === 'remove') {
+          deleteImage(selectedId);
+        } else if (act === 'inline') {
+          // insert inline token at cursor in textarea
+          const token = `[[img:${selectedId}]]`;
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          isRemoteUpdate = true;
+          const before = textarea.value.slice(0, start);
+          const after = textarea.value.slice(end);
+          textarea.value = before + token + after;
+          const pos = start + token.length;
+          try { textarea.setSelectionRange(pos, pos); } catch(err) {}
+          isRemoteUpdate = false;
+          textarea.focus();
+          if (client.connected) {
+            client.publish(topic, JSON.stringify({
+              type: 'text_update', content: textarea.value, clientId
+            }));
+          }
+          // set image z to 0 so it sits behind text
+          rec.z = 0;
+          updateNodeVisual(selectedId);
+          broadcastImageUpdate(selectedId);
+        }
+      });
+
+      // ===== MQTT =====
       const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
         clientId,
         clean: true,
@@ -65,101 +615,198 @@
       });
 
       client.on('connect', () => {
-        statusDot.className = "h-3 w-3 rounded-full bg-emerald-500";
-        syncStatus.textContent = "Live sync active";
+        statusDot.className = "dot animate-soft-pulse";
         client.subscribe(topic);
-        // Announce presence
         client.publish(topic, JSON.stringify({ type: 'join', clientId }));
       });
+      client.on('reconnect', () => { statusDot.className = "dot animate-soft-pulse reconnecting"; });
+      client.on('offline', () => { statusDot.className = "dot animate-soft-pulse offline"; });
 
-      client.on('reconnect', () => {
-        statusDot.className = "h-3 w-3 rounded-full bg-amber-500 animate-pulse";
-        syncStatus.textContent = "Reconnecting...";
-      });
-
-      client.on('offline', () => {
-        statusDot.className = "h-3 w-3 rounded-full bg-rose-500";
-        syncStatus.textContent = "Offline";
-      });
-
-      // 3. Handle Incoming Data
       client.on('message', (t, payload) => {
         try {
           const data = JSON.parse(payload.toString());
-          
+
           if (data.type === 'join' || data.type === 'ping') {
-            peers.add(data.clientId);
-            updatePeerCount();
-            // Reply with current state if we are the veteran
-            if (data.type === 'join' && textarea.value) {
+            if (data.clientId) {
+              peers.add(data.clientId);
+              peerLastSeen.set(data.clientId, Date.now());
+              updateOnlineCount();
+            }
+            if (data.type === 'join' && data.clientId !== clientId && textarea.value) {
               client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
             }
+            if (data.type === 'join' && data.clientId !== clientId && images.size > 0) {
+              images.forEach((rec, id) => {
+                client.publish(topic, JSON.stringify({
+                  type: 'image_add', id, dataUrl: rec.dataUrl,
+                  x: rec.x, y: rec.y, w: rec.w, h: rec.h, z: rec.z, clientId
+                }));
+              });
+            }
+          } else if (data.type === 'typing' && data.clientId !== clientId) {
+            typingPeers.set(data.clientId, Date.now());
+            renderTypingIndicator();
           } else if (data.type === 'state' && !textarea.value) {
             isRemoteUpdate = true;
             textarea.value = data.content;
-            updateStats();
             isRemoteUpdate = false;
           } else if (data.type === 'text_update' && data.clientId !== clientId) {
             isRemoteUpdate = true;
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
-            
             textarea.value = data.content;
-            
-            // Try to preserve cursor position gracefully
             try { textarea.setSelectionRange(start, end); } catch(e) {}
-            
-            updateStats();
             isRemoteUpdate = false;
+            typingPeers.delete(data.clientId);
+            renderTypingIndicator();
+          } else if (data.type === 'image_add' && data.id && data.dataUrl) {
+            images.set(data.id, {
+              dataUrl: data.dataUrl,
+              x: typeof data.x === 'number' ? data.x : 40,
+              y: typeof data.y === 'number' ? data.y : 40,
+              w: data.w || null,
+              h: data.h || null,
+              z: data.z || 1,
+            });
+            renderImages();
+            updateNodeVisual(data.id);
+          } else if (data.type === 'image_update' && data.id) {
+            const rec = images.get(data.id);
+            if (rec) {
+              if (typeof data.x === 'number') rec.x = data.x;
+              if (typeof data.y === 'number') rec.y = data.y;
+              if (data.w !== undefined) rec.w = data.w;
+              if (data.h !== undefined) rec.h = data.h;
+              if (data.z !== undefined) rec.z = data.z;
+              updateNodeVisual(data.id);
+            }
+          } else if (data.type === 'image_remove' && data.id) {
+            images.delete(data.id);
+            removeNode(data.id);
           } else if (data.type === 'clear') {
             isRemoteUpdate = true;
             textarea.value = '';
-            updateStats();
             isRemoteUpdate = false;
+            images.clear();
+            for (const id of [...imgNodes.keys()]) removeNode(id);
           }
         } catch (e) {}
       });
 
-      // 4. Broadcast Local Typing
+      // ===== LOCAL TYPING =====
       textarea.addEventListener('input', () => {
         if (isRemoteUpdate) return;
-        updateStats();
-        
         client.publish(topic, JSON.stringify({
           type: 'text_update',
           content: textarea.value,
           clientId
         }));
+
+        const now = Date.now();
+        if (now - lastTypingSent > TYPING_BROADCAST_MS) {
+          lastTypingSent = now;
+          client.publish(topic, JSON.stringify({ type: 'typing', clientId }));
+        }
       });
 
-      function updateStats() {
-        const text = textarea.value;
-        charCountEl.textContent = text.length + " characters";
-      }
-
-      function updatePeerCount() {
-        peerCountEl.textContent = peers.size + (peers.size === 1 ? " online" : " online");
-      }
-
-      // 5. Actions
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(window.location.href);
-        copyBtn.textContent = "Copied Link!";
-        setTimeout(() => copyBtn.textContent = "Share Room", 2000);
-      });
-
-      clearBtn.addEventListener('click', () => {
-        textarea.value = '';
-        updateStats();
-        client.publish(topic, JSON.stringify({ type: 'clear', clientId }));
-      });
-
-      // Periodic presence ping
       setInterval(() => {
         if (client.connected) {
           client.publish(topic, JSON.stringify({ type: 'ping', clientId }));
         }
+        const now = Date.now();
+        let changed = false;
+        for (const [id, last] of peerLastSeen.entries()) {
+          if (now - last > 35000 && id !== clientId) {
+            peers.delete(id);
+            peerLastSeen.delete(id);
+            typingPeers.delete(id);
+            changed = true;
+          }
+        }
+        if (changed) updateOnlineCount();
+        renderTypingIndicator();
       }, 15000);
+
+      setInterval(renderTypingIndicator, 500);
+
+      // ===== POPOVER =====
+      const statusArea = document.getElementById('status-area');
+      const imagePopover = document.getElementById('image-popover');
+
+      function togglePopover(open) {
+        const should = open !== undefined ? open : !imagePopover.classList.contains('open');
+        imagePopover.classList.toggle('open', should);
+      }
+      statusArea.addEventListener('click', (e) => { e.stopPropagation(); togglePopover(); });
+      document.addEventListener('click', (e) => {
+        if (!imagePopover.classList.contains('open')) return;
+        if (imagePopover.contains(e.target) || statusArea.contains(e.target)) return;
+        togglePopover(false);
+      });
+
+      // ===== IMAGE INSERT =====
+      const imgUploadInput = document.getElementById('img-upload-input');
+
+      imgUploadInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const id = 'img_' + Math.random().toString(36).slice(2, 10);
+          const offset = (images.size % 8) * 30;
+          const rec = {
+            dataUrl: ev.target.result,
+            x: 60 + offset,
+            y: 60 + offset,
+            w: null, h: null,
+            z: 1,
+          };
+          images.set(id, rec);
+          renderImages();
+          const node = imgNodes.get(id);
+          if (node) {
+            // get natural dimensions after load
+            const img = node.querySelector('img');
+            const setNatural = () => {
+              if (!rec.w && img.naturalWidth) {
+                const maxW = Math.min(560, imageLayer.clientWidth - 120);
+                const ratio = img.naturalWidth / img.naturalHeight;
+                rec.w = Math.min(img.naturalWidth, maxW);
+                rec.h = rec.w / ratio;
+                updateNodeVisual(id);
+                broadcastImageAdd(id);
+              }
+            };
+            if (img.complete) setNatural();
+            else img.onload = setNatural;
+          }
+          togglePopover(false);
+        };
+        reader.readAsDataURL(file);
+        imgUploadInput.value = '';
+      });
+
+      // resize positions on window resize
+      window.addEventListener('resize', () => {
+        const layerRect = imageLayer.getBoundingClientRect();
+        images.forEach((rec, id) => {
+          const node = imgNodes.get(id);
+          if (!node) return;
+          const nodeRect = node.getBoundingClientRect();
+          rec.x = Math.max(-nodeRect.width / 2, Math.min(rec.x, layerRect.width  - nodeRect.width / 2));
+          rec.y = Math.max(-nodeRect.height / 2, Math.min(rec.y, layerRect.height - nodeRect.height / 2));
+          updateNodeVisual(id);
+        });
+        if (selectedId) {
+          const node = imgNodes.get(selectedId);
+          if (node) positionToolbar(node);
+        }
+      });
+
+      // deselect on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') deselect();
+      });
     </script>
   </body>
 </html>
