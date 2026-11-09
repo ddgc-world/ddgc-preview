@@ -1,878 +1,435 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>note · live</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
-  <style>
-    html, body {
-      background: #000000;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-    body {
-      display: flex;
-      flex-direction: column;
-      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-    main {
-      flex: 1;
-      display: flex;
-      padding: 1.5rem;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    #notepad {
-      width: 100%;
-      height: 100%;
-      background: transparent;
-      border: none;
-      outline: none;
-      resize: none;
-      color: #e2e8f0;
-      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
-      font-size: 1.125rem;
-      line-height: 1.7;
-      padding: 0;
-      caret-color: #34d399;
-      transition: box-shadow 0.2s ease;
-    }
-    #notepad:focus { outline: none; box-shadow: none; }
-    #notepad::placeholder {
-      color: #1e293b;
-      font-style: italic;
-      font-weight: 300;
-    }
-    #notepad::-webkit-scrollbar { width: 6px; }
-    #notepad::-webkit-scrollbar-track { background: transparent; }
-    #notepad::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-    #notepad::-webkit-scrollbar-thumb:hover { background: #334155; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>note</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+    <style>
+      html, body { background:#000; height:100%; margin:0; padding:0; overflow:hidden; }
+      #notepad { caret-color:#34d399; }
+      #notepad::placeholder { color:#1e293b; font-style:italic; font-weight:300; }
+      #notepad::-webkit-scrollbar { width:6px; }
+      #notepad::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
 
-    /* status button (right side) */
-    #status-btn {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      width: 1.6rem;
-      height: 1.6rem;
-      border-radius: 50%;
-      background: #111;
-      border: 1px solid #1e293b;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      z-index: 200;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    #status-btn:hover { border-color: #334155; background: #1a1a1a; }
-    #status-btn .dot {
-      width: 0.55rem;
-      height: 0.55rem;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 8px #10b98188;
-      transition: background-color 0.3s, box-shadow 0.3s;
-      pointer-events: none;
-    }
-    #status-btn .dot.reconnecting { background: #f59e0b; box-shadow: 0 0 6px #f59e0b88; }
-    #status-btn .dot.offline { background: #ef4444; box-shadow: 0 0 5px #ef444488; }
+      /* status button — right side */
+      #status-btn {
+        position:fixed; top:1rem; right:1rem; width:1.6rem; height:1.6rem;
+        border-radius:50%; background:#111; border:1px solid #1e293b;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; z-index:200; transition:border-color .2s, background .2s;
+      }
+      #status-btn:hover { border-color:#334155; background:#1a1a1a; }
+      #status-btn .dot {
+        width:.55rem; height:.55rem; border-radius:50%; background:#10b981;
+        box-shadow:0 0 8px #10b98188; transition:background-color .3s, box-shadow .3s;
+        pointer-events:none;
+      }
+      #status-btn .dot.reconnecting { background:#f59e0b; box-shadow:0 0 6px #f59e0b88; }
+      #status-btn .dot.offline { background:#ef4444; box-shadow:0 0 5px #ef444488; }
 
-    /* floating panel (draggable) */
-    #panel {
-      position: fixed;
-      top: 3.5rem;
-      right: 1rem;
-      width: 18rem;
-      max-height: 70vh;
-      background: #0a0a0a;
-      border: 1px solid #1e293b;
-      border-radius: 0.6rem;
-      display: none;
-      flex-direction: column;
-      z-index: 150;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-      overflow: hidden;
-      font-size: 0.8rem;
-    }
-    #panel.open { display: flex; }
-    #panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.5rem 0.75rem;
-      border-bottom: 1px solid #1e293b;
-      cursor: grab;
-      user-select: none;
-      background: #0f0f0f;
-      border-radius: 0.6rem 0.6rem 0 0;
-      flex-shrink: 0;
-    }
-    #panel-header:active { cursor: grabbing; }
-    #panel-header span {
-      color: #94a3b8;
-      font-size: 0.7rem;
-      font-weight: 500;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
-    #panel-close {
-      background: transparent;
-      border: none;
-      color: #475569;
-      cursor: pointer;
-      font-size: 1rem;
-      line-height: 1;
-      padding: 0 0.2rem;
-    }
-    #panel-close:hover { color: #e2e8f0; }
+      /* draggable panel */
+      #panel {
+        position:fixed; top:3.5rem; right:1rem; width:20rem; max-height:75vh;
+        background:#0a0a0a; border:1px solid #1e293b; border-radius:.6rem;
+        display:none; flex-direction:column; z-index:150;
+        box-shadow:0 10px 40px rgba(0,0,0,.8); overflow:hidden; font-size:.8rem;
+      }
+      #panel.open { display:flex; }
+      #panel-header {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:.5rem .75rem; border-bottom:1px solid #1e293b;
+        cursor:grab; user-select:none; background:#0f0f0f;
+        border-radius:.6rem .6rem 0 0; flex-shrink:0;
+      }
+      #panel-header:active { cursor:grabbing; }
+      #panel-header span {
+        color:#94a3b8; font-size:.7rem; font-weight:500;
+        letter-spacing:.03em; text-transform:uppercase;
+      }
+      #panel-close {
+        background:transparent; border:none; color:#475569; cursor:pointer;
+        font-size:1rem; line-height:1; padding:0 .2rem;
+      }
+      #panel-close:hover { color:#e2e8f0; }
+      #panel-body {
+        padding:.75rem; overflow-y:auto; display:flex;
+        flex-direction:column; gap:.9rem;
+      }
+      #panel-body::-webkit-scrollbar { width:4px; }
+      #panel-body::-webkit-scrollbar-thumb { background:#1e293b; border-radius:2px; }
+      .section-label {
+        color:#64748b; font-size:.65rem; text-transform:uppercase;
+        letter-spacing:.06em; margin-bottom:.35rem; font-weight:600;
+      }
 
-    #panel-body {
-      padding: 0.75rem;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-    #panel-body::-webkit-scrollbar { width: 4px; }
-    #panel-body::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+      .format-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.3rem; }
+      .format-btn {
+        display:flex; flex-direction:column; align-items:center; gap:.2rem;
+        background:#111; border:1px solid #1e293b; border-radius:.35rem;
+        color:#cbd5e1; padding:.4rem .2rem; cursor:pointer;
+        transition:background .12s, border-color .12s; font-size:.65rem;
+      }
+      .format-btn:hover { background:#1e293b; border-color:#334155; }
+      .format-btn:active { transform:scale(.95); }
+      .format-btn .icon { font-size:.95rem; line-height:1; color:#34d399; font-family:'SF Mono',monospace; font-weight:700; }
+      .format-btn .label { color:#64748b; font-size:.55rem; text-transform:uppercase; letter-spacing:.04em; }
+      .format-btn kbd {
+        background:#0a0a0a; border:1px solid #1e293b; border-radius:.15rem;
+        color:#475569; font-family:'SF Mono',monospace; font-size:.5rem;
+        padding:.05rem .2rem; margin-top:.1rem;
+      }
 
-    .section-label {
-      color: #64748b;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      margin-bottom: 0.25rem;
-      font-weight: 600;
-    }
+      .shortcut-list { display:flex; flex-direction:column; gap:.2rem; }
+      .shortcut-row {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:.25rem .4rem; border-radius:.25rem;
+      }
+      .shortcut-row:hover { background:#0f0f0f; }
+      .shortcut-row .keys { display:flex; gap:.15rem; align-items:center; }
+      .shortcut-row .keys kbd {
+        background:#1e293b; border:1px solid #334155; border-bottom-width:2px;
+        border-radius:.2rem; color:#cbd5e1; font-family:'SF Mono',monospace;
+        font-size:.6rem; padding:.1rem .3rem; line-height:1.2;
+        display:inline-block; min-width:.9rem; text-align:center;
+      }
+      .shortcut-row .desc { color:#94a3b8; font-size:.7rem; text-align:right; }
 
-    /* shortcut pills */
-    .shortcut-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.3rem;
-    }
-    .shortcut-pill {
-      background: #111;
-      border: 1px solid #1e293b;
-      color: #cbd5e1;
-      font-family: 'SF Mono', monospace;
-      font-size: 0.7rem;
-      padding: 0.2rem 0.45rem;
-      border-radius: 0.3rem;
-      cursor: pointer;
-      transition: background 0.12s, border-color 0.12s;
-      white-space: nowrap;
-    }
-    .shortcut-pill:hover { background: #1e293b; border-color: #334155; }
-    .shortcut-pill:active { transform: scale(0.95); }
-    .shortcut-pill .key {
-      color: #34d399;
-      font-weight: 600;
-      margin-right: 0.2rem;
-    }
+      .img-upload-btn {
+        display:inline-flex; align-items:center; gap:.4rem; background:#111;
+        border:1px solid #1e293b; color:#94a3b8; font-size:.7rem;
+        padding:.4rem .7rem; border-radius:.4rem; cursor:pointer;
+        transition:background .12s, border-color .12s, color .12s;
+      }
+      .img-upload-btn:hover { background:#1e293b; color:#e2e8f0; border-color:#334155; }
+      #img-preview {
+        display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.5rem;
+        max-height:8rem; overflow-y:auto;
+      }
+      .img-thumb {
+        position:relative; width:3.2rem; height:3.2rem; border-radius:.3rem;
+        overflow:hidden; border:1px solid #1e293b; flex-shrink:0;
+      }
+      .img-thumb img { width:100%; height:100%; object-fit:cover; }
+      .img-thumb .remove {
+        position:absolute; top:1px; right:1px; width:1rem; height:1rem;
+        background:rgba(0,0,0,.7); border-radius:50%; color:#f87171;
+        font-size:.6rem; display:flex; align-items:center; justify-content:center;
+        cursor:pointer; border:none; line-height:1;
+      }
+      .img-thumb .remove:hover { background:#450a0a; color:#fca5a5; }
 
-    /* image upload */
-    .img-upload-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: #111;
-      border: 1px solid #1e293b;
-      color: #94a3b8;
-      font-size: 0.7rem;
-      padding: 0.4rem 0.7rem;
-      border-radius: 0.4rem;
-      cursor: pointer;
-      transition: background 0.12s, border-color 0.12s, color 0.12s;
-    }
-    .img-upload-btn:hover { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+      @keyframes soft-pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+      .animate-soft-pulse { animation:soft-pulse 2s infinite ease-in-out; }
+    </style>
+  </head>
+  <body class="bg-black text-slate-100 h-screen flex flex-col font-sans">
 
-    #img-preview {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.3rem;
-      margin-top: 0.4rem;
-      max-height: 8rem;
-      overflow-y: auto;
-    }
-    #img-preview::-webkit-scrollbar { width: 3px; }
-    #img-preview::-webkit-scrollbar-thumb { background: #1e293b; }
-    .img-thumb {
-      position: relative;
-      width: 3.2rem;
-      height: 3.2rem;
-      border-radius: 0.3rem;
-      overflow: hidden;
-      border: 1px solid #1e293b;
-      flex-shrink: 0;
-    }
-    .img-thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .img-thumb .remove {
-      position: absolute;
-      top: 1px;
-      right: 1px;
-      width: 1rem;
-      height: 1rem;
-      background: rgba(0,0,0,0.7);
-      border-radius: 50%;
-      color: #f87171;
-      font-size: 0.6rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      border: none;
-      line-height: 1;
-    }
-    .img-thumb .remove:hover { background: #450a0a; color: #fca5a5; }
+    <!-- floating status button -->
+    <button id="status-btn" title="status & tools">
+      <div class="dot animate-soft-pulse" id="status-dot"></div>
+    </button>
 
-    /* text shortcut list */
-    .text-shortcuts {
-      display: flex;
-      flex-direction: column;
-      gap: 0.3rem;
-    }
-    .text-shortcut-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #0f0f0f;
-      border: 1px solid #1a1a1a;
-      border-radius: 0.35rem;
-      padding: 0.3rem 0.5rem;
-      transition: border-color 0.12s;
-    }
-    .text-shortcut-item:hover { border-color: #1e293b; }
-    .text-shortcut-item .shortcut-text {
-      color: #cbd5e1;
-      font-family: 'SF Mono', monospace;
-      font-size: 0.7rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 9rem;
-    }
-    .text-shortcut-item .shortcut-trigger {
-      color: #34d399;
-      font-size: 0.6rem;
-      font-family: 'SF Mono', monospace;
-      background: #0a1a12;
-      padding: 0.1rem 0.35rem;
-      border-radius: 0.2rem;
-      white-space: nowrap;
-    }
-    .text-shortcut-item .insert-btn {
-      background: #1e293b;
-      border: none;
-      color: #94a3b8;
-      font-size: 0.6rem;
-      padding: 0.15rem 0.4rem;
-      border-radius: 0.25rem;
-      cursor: pointer;
-      transition: background 0.12s, color 0.12s;
-      white-space: nowrap;
-    }
-    .text-shortcut-item .insert-btn:hover { background: #334155; color: #e2e8f0; }
-    .add-shortcut-row {
-      display: flex;
-      gap: 0.3rem;
-      margin-top: 0.2rem;
-    }
-    .add-shortcut-row input {
-      flex: 1;
-      background: #0f0f0f;
-      border: 1px solid #1e293b;
-      border-radius: 0.3rem;
-      color: #e2e8f0;
-      font-size: 0.7rem;
-      font-family: 'SF Mono', monospace;
-      padding: 0.3rem 0.4rem;
-      outline: none;
-      min-width: 0;
-    }
-    .add-shortcut-row input:focus { border-color: #334155; }
-    .add-shortcut-row input::placeholder { color: #334155; }
-    .add-shortcut-row button {
-      background: #1e293b;
-      border: none;
-      color: #94a3b8;
-      font-size: 0.7rem;
-      padding: 0.3rem 0.6rem;
-      border-radius: 0.3rem;
-      cursor: pointer;
-      transition: background 0.12s, color 0.12s;
-      white-space: nowrap;
-    }
-    .add-shortcut-row button:hover { background: #334155; color: #e2e8f0; }
+    <!-- draggable tools panel -->
+    <div id="panel">
+      <div id="panel-header">
+        <span>tools</span>
+        <button id="panel-close">✕</button>
+      </div>
+      <div id="panel-body">
+        <div>
+          <div class="section-label">formatting</div>
+          <div class="format-grid">
+            <button class="format-btn" data-action="bold"><span class="icon">B</span><span class="label">bold</span><kbd>⌃B</kbd></button>
+            <button class="format-btn" data-action="italic"><span class="icon" style="font-style:italic">I</span><span class="label">italic</span><kbd>⌃I</kbd></button>
+            <button class="format-btn" data-action="underline"><span class="icon" style="text-decoration:underline">U</span><span class="label">under</span><kbd>⌃U</kbd></button>
+            <button class="format-btn" data-action="strike"><span class="icon" style="text-decoration:line-through">S</span><span class="label">strike</span><kbd>⌃⇧X</kbd></button>
+            <button class="format-btn" data-action="code"><span class="icon" style="font-family:monospace">&lt;/&gt;</span><span class="label">code</span><kbd>⌃E</kbd></button>
+            <button class="format-btn" data-action="highlight"><span class="icon" style="background:#facc15;color:#000;padding:0 .15rem;border-radius:.1rem">H</span><span class="label">highlight</span><kbd>⌃⇧H</kbd></button>
+            <button class="format-btn" data-action="bullet"><span class="icon">•</span><span class="label">bullet</span><kbd>⌃⇧8</kbd></button>
+            <button class="format-btn" data-action="numbered"><span class="icon">1.</span><span class="label">number</span><kbd>⌃⇧7</kbd></button>
+            <button class="format-btn" data-action="link"><span class="icon">🔗</span><span class="label">link</span><kbd>⌃K</kbd></button>
+          </div>
+        </div>
 
-    /* toast for shortcut trigger */
-    #toast {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #111;
-      border: 1px solid #1e293b;
-      color: #e2e8f0;
-      font-size: 0.75rem;
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      z-index: 300;
-      opacity: 0;
-      transition: opacity 0.2s;
-      pointer-events: none;
-      white-space: nowrap;
-      font-family: 'SF Mono', monospace;
-    }
-    #toast.show { opacity: 1; }
+        <div>
+          <div class="section-label">keyboard shortcuts</div>
+          <div class="shortcut-list">
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>Z</kbd></div><span class="desc">undo</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>⇧</kbd><kbd>Z</kbd></div><span class="desc">redo</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>A</kbd></div><span class="desc">select all</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>F</kbd></div><span class="desc">find</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>H</kbd></div><span class="desc">replace</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>⇧</kbd><kbd>V</kbd></div><span class="desc">paste plain</span></div>
+          </div>
+        </div>
 
-    @keyframes soft-pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    .animate-soft-pulse { animation: soft-pulse 2s infinite ease-in-out; }
-  </style>
-</head>
-<body>
-
-  <!-- status button (right side) -->
-  <button id="status-btn" title="status & tools">
-    <div class="dot animate-soft-pulse"></div>
-  </button>
-
-  <!-- draggable panel -->
-  <div id="panel">
-    <div id="panel-header">
-      <span>tools</span>
-      <button id="panel-close">✕</button>
-    </div>
-    <div id="panel-body">
-
-      <!-- Text shortcuts section -->
-      <div>
-        <div class="section-label">text shortcuts</div>
-        <div class="text-shortcuts" id="text-shortcuts-list"></div>
-        <div class="add-shortcut-row">
-          <input type="text" id="new-shortcut-input" placeholder="word or phrase…" maxlength="60" />
-          <button id="add-shortcut-btn">add</button>
+        <div>
+          <div class="section-label">images</div>
+          <label class="img-upload-btn" for="img-upload-input"><span>📷</span> upload image</label>
+          <input type="file" id="img-upload-input" accept="image/*" multiple style="display:none" />
+          <div id="img-preview"></div>
         </div>
       </div>
-
-      <!-- Image upload section -->
-      <div>
-        <div class="section-label">images</div>
-        <label class="img-upload-btn" for="img-upload-input">
-          <span>📷</span> upload image
-        </label>
-        <input type="file" id="img-upload-input" accept="image/*" multiple style="display:none" />
-        <div id="img-preview"></div>
-      </div>
-
     </div>
-  </div>
 
-  <!-- toast -->
-  <div id="toast"></div>
+    <!-- full-screen notepad -->
+    <main class="flex-1 relative p-6 w-full mx-auto flex flex-col">
+      <textarea
+        id="notepad"
+        placeholder="start typing..."
+        class="flex-1 w-full bg-transparent resize-none outline-none text-lg leading-relaxed placeholder:text-slate-600 font-mono"
+        spellcheck="false"
+        autofocus
+      ></textarea>
+    </main>
 
-  <!-- full screen notepad -->
-  <main>
-    <textarea
-      id="notepad"
-      placeholder="start typing…"
-      spellcheck="false"
-      autofocus
-    ></textarea>
-  </main>
-
-  <script>
-    (function() {
-      // ---- room & elements ----
-      const roomId = window.location.hash.slice(1) || 'note-default-room';
+    <script>
+      // ===== ORIGINAL SYNC LOGIC — UNCHANGED =====
+      const roomId = window.location.hash.slice(1) || 'eez-notepad-default-room';
       if (!window.location.hash) window.location.hash = roomId;
 
       const textarea = document.getElementById('notepad');
-      const statusBtn = document.getElementById('status-btn');
-      const statusDot = statusBtn.querySelector('.dot');
-      const panel = document.getElementById('panel');
-      const panelHeader = document.getElementById('panel-header');
-      const panelClose = document.getElementById('panel-close');
-      const textShortcutsList = document.getElementById('text-shortcuts-list');
-      const newShortcutInput = document.getElementById('new-shortcut-input');
-      const addShortcutBtn = document.getElementById('add-shortcut-btn');
-      const imgUploadInput = document.getElementById('img-upload-input');
-      const imgPreview = document.getElementById('img-preview');
-      const toast = document.getElementById('toast');
+      const statusDot = document.getElementById('status-dot');
+      const peerCountEl = { textContent: '' }; // no visible peer count anymore
+      const charCountEl = { textContent: '' };
 
-      // ---- client identity ----
-      const clientId = 'note_' + Math.random().toString(36).slice(2, 9);
+      const clientId = 'notepad_' + Math.random().toString(36).slice(2, 9);
       const topic = 'eez/v1/notepad/' + encodeURIComponent(roomId);
 
       let isRemoteUpdate = false;
       let peers = new Set([clientId]);
-      let lastTypingBroadcast = 0;
-      const TYPING_THROTTLE_MS = 50;
 
-      // ---- MQTT connection ----
       const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
         clientId,
         clean: true,
         connectTimeout: 5000,
-        reconnectPeriod: 2000,
       });
-
-      // ---- connection status (dot only) ----
-      function setStatus(mode) {
-        statusDot.className = 'dot';
-        if (mode === 'live') {
-          statusDot.classList.add('animate-soft-pulse');
-          statusDot.style.background = '#10b981';
-          statusDot.style.boxShadow = '0 0 8px #10b98188';
-        } else if (mode === 'reconnecting') {
-          statusDot.classList.add('animate-soft-pulse');
-          statusDot.style.background = '#f59e0b';
-          statusDot.style.boxShadow = '0 0 6px #f59e0b88';
-        } else if (mode === 'offline') {
-          statusDot.classList.add('animate-soft-pulse');
-          statusDot.style.background = '#ef4444';
-          statusDot.style.boxShadow = '0 0 5px #ef444488';
-        }
-      }
 
       client.on('connect', () => {
-        setStatus('live');
+        statusDot.className = "dot animate-soft-pulse";
         client.subscribe(topic);
         client.publish(topic, JSON.stringify({ type: 'join', clientId }));
-        if (textarea.value.trim().length > 0) {
-          client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
-        }
       });
 
-      client.on('reconnect', () => setStatus('reconnecting'));
-      client.on('offline', () => setStatus('offline'));
-      client.on('error', (err) => {
-        console.warn('MQTT error:', err);
-        setStatus('offline');
+      client.on('reconnect', () => {
+        statusDot.className = "dot animate-soft-pulse reconnecting";
       });
 
-      // ---- UI helpers ----
-      function updatePeerCount() {
-        // internal only, no visible count
-      }
+      client.on('offline', () => {
+        statusDot.className = "dot animate-soft-pulse offline";
+      });
 
-      // ---- incoming messages ----
+      // ===== HANDLE INCOMING — EXACTLY AS ORIGINAL =====
       client.on('message', (t, payload) => {
-        if (t !== topic) return;
         try {
           const data = JSON.parse(payload.toString());
 
           if (data.type === 'join' || data.type === 'ping') {
-            if (data.clientId && data.clientId !== clientId) {
-              peers.add(data.clientId);
-              updatePeerCount();
+            peers.add(data.clientId);
+            if (data.type === 'join' && textarea.value) {
+              client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
             }
-            if (data.type === 'join' && data.clientId !== clientId && textarea.value.length > 0) {
-              client.publish(topic, JSON.stringify({
-                type: 'state',
-                content: textarea.value,
-                clientId,
-              }));
-            }
-          }
-          else if (data.type === 'state') {
-            if (data.clientId !== clientId) {
-              const start = textarea.selectionStart;
-              const end = textarea.selectionEnd;
-              isRemoteUpdate = true;
-              textarea.value = data.content;
-              const newLen = data.content.length;
-              const newStart = Math.min(start, newLen);
-              const newEnd = Math.min(end, newLen);
-              try { textarea.setSelectionRange(newStart, newEnd); } catch (e) {}
-              isRemoteUpdate = false;
-            }
-          }
-          else if (data.type === 'text_update' && data.clientId !== clientId) {
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
+          } else if (data.type === 'state' && !textarea.value) {
             isRemoteUpdate = true;
             textarea.value = data.content;
-            const newLen = data.content.length;
-            const newStart = Math.min(start, newLen);
-            const newEnd = Math.min(end, newLen);
-            try { textarea.setSelectionRange(newStart, newEnd); } catch (e) {}
             isRemoteUpdate = false;
-          }
-          else if (data.type === 'clear' && data.clientId !== clientId) {
+          } else if (data.type === 'text_update' && data.clientId !== clientId) {
+            isRemoteUpdate = true;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = data.content;
+            try { textarea.setSelectionRange(start, end); } catch(e) {}
+            isRemoteUpdate = false;
+          } else if (data.type === 'clear') {
             isRemoteUpdate = true;
             textarea.value = '';
             isRemoteUpdate = false;
           }
-          else if (data.type === 'insert' && data.clientId !== clientId) {
-            // insert remote text at cursor
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            isRemoteUpdate = true;
-            const before = textarea.value.slice(0, start);
-            const after = textarea.value.slice(end);
-            textarea.value = before + data.text + after;
-            const newPos = start + data.text.length;
-            try { textarea.setSelectionRange(newPos, newPos); } catch (e) {}
-            isRemoteUpdate = false;
-            broadcastTextUpdate(true);
-          }
-        } catch (e) {
-          // ignore
-        }
-      });
-
-      // ---- broadcast local typing ----
-      function broadcastTextUpdate(immediate = false) {
-        if (!client.connected) return;
-        const now = Date.now();
-        if (!immediate && now - lastTypingBroadcast < TYPING_THROTTLE_MS) return;
-        lastTypingBroadcast = now;
-        client.publish(topic, JSON.stringify({
-          type: 'text_update',
-          content: textarea.value,
-          clientId,
-        }));
-      }
-
-      let typingTimer = null;
-      textarea.addEventListener('input', () => {
-        if (isRemoteUpdate) return;
-        broadcastTextUpdate(false);
-        clearTimeout(typingTimer);
-        typingTimer = setTimeout(() => {
-          broadcastTextUpdate(true);
-        }, 70);
-      });
-
-      textarea.addEventListener('blur', () => {
-        if (!isRemoteUpdate && client.connected) {
-          broadcastTextUpdate(true);
-        }
-      });
-
-      // ---- presence cleanup ----
-      const peerLastSeen = new Map();
-      client.on('message', (t, payload) => {
-        if (t !== topic) return;
-        try {
-          const data = JSON.parse(payload.toString());
-          if ((data.type === 'join' || data.type === 'ping') && data.clientId && data.clientId !== clientId) {
-            peerLastSeen.set(data.clientId, Date.now());
-            peers.add(data.clientId);
-            updatePeerCount();
-          }
         } catch (e) {}
       });
 
-      setInterval(() => {
-        const now = Date.now();
-        for (const [id, last] of peerLastSeen.entries()) {
-          if (now - last > 35000 && id !== clientId) {
-            peers.delete(id);
-            peerLastSeen.delete(id);
-          }
-        }
-        if (!peers.has(clientId)) peers.add(clientId);
-      }, 20000);
+      // ===== LOCAL TYPING — EXACTLY AS ORIGINAL =====
+      textarea.addEventListener('input', () => {
+        if (isRemoteUpdate) return;
+        client.publish(topic, JSON.stringify({
+          type: 'text_update',
+          content: textarea.value,
+          clientId
+        }));
+      });
 
+      // periodic presence ping (kept from original)
       setInterval(() => {
         if (client.connected) {
           client.publish(topic, JSON.stringify({ type: 'ping', clientId }));
         }
       }, 15000);
 
-      // ==========================================
-      //  PANEL & DRAG
-      // ==========================================
-      function togglePanel(open) {
-        const shouldOpen = open !== undefined ? open : !panel.classList.contains('open');
-        if (shouldOpen) {
-          panel.classList.add('open');
-        } else {
-          panel.classList.remove('open');
+      // ===== NEW: formatting helpers (local mutation + one broadcast) =====
+      function broadcastFull() {
+        if (!client.connected) return;
+        client.publish(topic, JSON.stringify({
+          type: 'text_update', content: textarea.value, clientId
+        }));
+      }
+
+      function wrapSelection(prefix, suffix, placeholder) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const sel = textarea.value.slice(start, end) || placeholder || '';
+        const next = textarea.value.slice(0, start) + prefix + sel + suffix + textarea.value.slice(end);
+        isRemoteUpdate = true;
+        textarea.value = next;
+        try {
+          textarea.setSelectionRange(start + prefix.length, start + prefix.length + sel.length);
+        } catch(e) {}
+        isRemoteUpdate = false;
+        textarea.focus();
+        broadcastFull();
+      }
+
+      function prefixLine(prefix) {
+        const start = textarea.selectionStart;
+        const lineStart = textarea.value.lastIndexOf('\n', start - 1) + 1;
+        const next = textarea.value.slice(0, lineStart) + prefix + textarea.value.slice(lineStart);
+        isRemoteUpdate = true;
+        textarea.value = next;
+        try { textarea.setSelectionRange(start + prefix.length, start + prefix.length); } catch(e) {}
+        isRemoteUpdate = false;
+        textarea.focus();
+        broadcastFull();
+      }
+
+      function applyFormat(action) {
+        switch (action) {
+          case 'bold': return wrapSelection('**', '**', 'bold text');
+          case 'italic': return wrapSelection('*', '*', 'italic text');
+          case 'underline': return wrapSelection('<u>', '</u>', 'underlined');
+          case 'strike': return wrapSelection('~~', '~~', 'strikethrough');
+          case 'code': return wrapSelection('`', '`', 'code');
+          case 'highlight': return wrapSelection('==', '==', 'highlighted');
+          case 'bullet': return prefixLine('- ');
+          case 'numbered': return prefixLine('1. ');
+          case 'link': return wrapSelection('[', '](https://)', 'link text');
         }
       }
 
-      statusBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        togglePanel();
+      document.querySelectorAll('.format-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          applyFormat(btn.dataset.action);
+        });
       });
 
-      panelClose.addEventListener('click', () => togglePanel(false));
+      // real keyboard shortcuts — only when textarea focused
+      document.addEventListener('keydown', (e) => {
+        const mod = e.ctrlKey || e.metaKey;
+        if (!mod) return;
+        if (document.activeElement !== textarea) return;
+        const key = e.key.toLowerCase();
 
-      // close on outside click (but not on panel or status button)
+        if (!e.shiftKey) {
+          if (key === 'b') { e.preventDefault(); applyFormat('bold'); }
+          else if (key === 'i') { e.preventDefault(); applyFormat('italic'); }
+          else if (key === 'u') { e.preventDefault(); applyFormat('underline'); }
+          else if (key === 'e') { e.preventDefault(); applyFormat('code'); }
+          else if (key === 'k') { e.preventDefault(); applyFormat('link'); }
+        } else {
+          if (key === 'x') { e.preventDefault(); applyFormat('strike'); }
+          else if (key === 'h') { e.preventDefault(); applyFormat('highlight'); }
+          else if (key === '8') { e.preventDefault(); applyFormat('bullet'); }
+          else if (key === '7') { e.preventDefault(); applyFormat('numbered'); }
+        }
+      });
+
+      // ===== NEW: panel toggle + drag =====
+      const panel = document.getElementById('panel');
+      const statusBtn = document.getElementById('status-btn');
+      const panelHeader = document.getElementById('panel-header');
+      const panelClose = document.getElementById('panel-close');
+
+      function togglePanel(open) {
+        const should = open !== undefined ? open : !panel.classList.contains('open');
+        panel.classList.toggle('open', should);
+      }
+      statusBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePanel(); });
+      panelClose.addEventListener('click', () => togglePanel(false));
       document.addEventListener('click', (e) => {
         if (!panel.classList.contains('open')) return;
         if (panel.contains(e.target) || statusBtn.contains(e.target)) return;
         togglePanel(false);
       });
 
-      // ---- drag functionality ----
-      let isDragging = false;
-      let dragStartX, dragStartY, panelStartLeft, panelStartTop;
+      let dragging = false, dsx = 0, dsy = 0, psl = 0, pst = 0;
+      function startDrag(x, y) {
+        const r = panel.getBoundingClientRect();
+        psl = r.left; pst = r.top; dsx = x; dsy = y;
+        panel.style.right = 'auto';
+        panel.style.left = psl + 'px';
+        panel.style.top = pst + 'px';
+        dragging = true;
+      }
+      function moveDrag(x, y) {
+        if (!dragging) return;
+        const m = 8;
+        let nl = Math.max(m, Math.min(psl + (x - dsx), window.innerWidth - panel.offsetWidth - m));
+        let nt = Math.max(m, Math.min(pst + (y - dsy), window.innerHeight - panel.offsetHeight - m));
+        panel.style.left = nl + 'px';
+        panel.style.top = nt + 'px';
+      }
+      function endDrag() { dragging = false; }
 
       panelHeader.addEventListener('mousedown', (e) => {
-        // only left button, and not on close button
         if (e.button !== 0 || e.target === panelClose) return;
         e.preventDefault();
-
-        const rect = panel.getBoundingClientRect();
-        panelStartLeft = rect.left;
-        panelStartTop = rect.top;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-
-        // switch from right-based to left/top-based positioning
-        panel.style.right = 'auto';
-        panel.style.left = panelStartLeft + 'px';
-        panel.style.top = panelStartTop + 'px';
-
-        isDragging = true;
-        panelHeader.style.cursor = 'grabbing';
+        startDrag(e.clientX, e.clientY);
         document.body.style.userSelect = 'none';
       });
-
-      document.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        e.preventDefault();
-
-        const dx = e.clientX - dragStartX;
-        const dy = e.clientY - dragStartY;
-
-        let newLeft = panelStartLeft + dx;
-        let newTop = panelStartTop + dy;
-
-        // keep within viewport (with a small margin)
-        const margin = 8;
-        const panelW = panel.offsetWidth;
-        const panelH = panel.offsetHeight;
-        const maxLeft = window.innerWidth - panelW - margin;
-        const maxTop = window.innerHeight - panelH - margin;
-
-        newLeft = Math.max(margin, Math.min(newLeft, maxLeft));
-        newTop = Math.max(margin, Math.min(newTop, maxTop));
-
-        panel.style.left = newLeft + 'px';
-        panel.style.top = newTop + 'px';
-      });
-
-      document.addEventListener('mouseup', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        panelHeader.style.cursor = 'grab';
-        document.body.style.userSelect = '';
-      });
-
-      // touch support for drag
+      document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+      document.addEventListener('mouseup', () => { endDrag(); document.body.style.userSelect = ''; });
       panelHeader.addEventListener('touchstart', (e) => {
         if (e.target === panelClose) return;
-        const touch = e.touches[0];
-        const rect = panel.getBoundingClientRect();
-        panelStartLeft = rect.left;
-        panelStartTop = rect.top;
-        dragStartX = touch.clientX;
-        dragStartY = touch.clientY;
-
-        panel.style.right = 'auto';
-        panel.style.left = panelStartLeft + 'px';
-        panel.style.top = panelStartTop + 'px';
-
-        isDragging = true;
+        const t = e.touches[0];
+        startDrag(t.clientX, t.clientY);
       }, { passive: true });
-
       document.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        const touch = e.touches[0];
-        const dx = touch.clientX - dragStartX;
-        const dy = touch.clientY - dragStartY;
-
-        let newLeft = panelStartLeft + dx;
-        let newTop = panelStartTop + dy;
-
-        const margin = 8;
-        const panelW = panel.offsetWidth;
-        const panelH = panel.offsetHeight;
-        const maxLeft = window.innerWidth - panelW - margin;
-        const maxTop = window.innerHeight - panelH - margin;
-
-        newLeft = Math.max(margin, Math.min(newLeft, maxLeft));
-        newTop = Math.max(margin, Math.min(newTop, maxTop));
-
-        panel.style.left = newLeft + 'px';
-        panel.style.top = newTop + 'px';
+        const t = e.touches[0];
+        moveDrag(t.clientX, t.clientY);
       }, { passive: true });
+      document.addEventListener('touchend', endDrag);
 
-      document.addEventListener('touchend', () => {
-        isDragging = false;
-      });
-
-      // ==========================================
-      //  TEXT SHORTCUTS
-      // ==========================================
-      const shortcuts = [];
-
-      function renderShortcuts() {
-        textShortcutsList.innerHTML = '';
-        shortcuts.forEach((sc, i) => {
-          const item = document.createElement('div');
-          item.className = 'text-shortcut-item';
-          item.innerHTML = `
-            <span class="shortcut-text" title="${sc.text.replace(/"/g, '&quot;')}">${sc.text}</span>
-            <span class="shortcut-trigger">${sc.trigger}</span>
-            <button class="insert-btn" data-index="${i}">insert</button>
-          `;
-          textShortcutsList.appendChild(item);
-        });
-
-        // attach insert handlers
-        textShortcutsList.querySelectorAll('.insert-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.index, 10);
-            insertShortcut(shortcuts[idx].text);
-          });
-        });
-      }
-
-      function addShortcut(text) {
-        if (!text.trim()) return;
-        // generate trigger: first 3 chars + "..."
-        const trigger = text.trim().length > 3 ? text.trim().slice(0, 3) + '…' : text.trim();
-        shortcuts.push({ text: text.trim(), trigger });
-        renderShortcuts();
-        newShortcutInput.value = '';
-        toastMsg('shortcut added');
-      }
-
-      function insertShortcut(text) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const before = textarea.value.slice(0, start);
-        const after = textarea.value.slice(end);
-        textarea.value = before + text + after;
-        const newPos = start + text.length;
-        textarea.setSelectionRange(newPos, newPos);
-        textarea.focus();
-        broadcastTextUpdate(true);
-
-        // also broadcast as insert for remote clients
-        if (client.connected) {
-          client.publish(topic, JSON.stringify({
-            type: 'insert',
-            text: text,
-            clientId,
-          }));
-        }
-      }
-
-      addShortcutBtn.addEventListener('click', () => {
-        addShortcut(newShortcutInput.value);
-      });
-
-      newShortcutInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          addShortcut(newShortcutInput.value);
-        }
-      });
-
-      // ==========================================
-      //  IMAGE UPLOAD
-      // ==========================================
-      const uploadedImages = []; // store data URLs
+      // ===== NEW: image upload (local only, shown in panel) =====
+      const uploadedImages = [];
+      const imgUploadInput = document.getElementById('img-upload-input');
+      const imgPreview = document.getElementById('img-preview');
 
       function renderImages() {
         imgPreview.innerHTML = '';
-        uploadedImages.forEach((dataUrl, i) => {
-          const thumb = document.createElement('div');
-          thumb.className = 'img-thumb';
-          thumb.innerHTML = `
-            <img src="${dataUrl}" alt="uploaded" />
-            <button class="remove" data-index="${i}" title="remove">✕</button>
-          `;
-          imgPreview.appendChild(thumb);
+        uploadedImages.forEach((src, i) => {
+          const div = document.createElement('div');
+          div.className = 'img-thumb';
+          div.innerHTML = `<img src="${src}" alt="" /><button class="remove" data-i="${i}">✕</button>`;
+          imgPreview.appendChild(div);
         });
-
-        imgPreview.querySelectorAll('.remove').forEach(btn => {
-          btn.addEventListener('click', (e) => {
+        imgPreview.querySelectorAll('.remove').forEach(b => {
+          b.addEventListener('click', (e) => {
             e.stopPropagation();
-            const idx = parseInt(btn.dataset.index, 10);
-            uploadedImages.splice(idx, 1);
+            uploadedImages.splice(parseInt(b.dataset.i, 10), 1);
             renderImages();
           });
         });
       }
-
       imgUploadInput.addEventListener('change', (e) => {
-        const files = e.target.files;
-        if (!files) return;
-        Array.from(files).forEach(file => {
+        Array.from(e.target.files || []).forEach(file => {
           if (!file.type.startsWith('image/')) return;
-          const reader = new FileReader();
-          reader.onload = (ev) => {
-            uploadedImages.push(ev.target.result);
-            renderImages();
-          };
-          reader.readAsDataURL(file);
+          const r = new FileReader();
+          r.onload = (ev) => { uploadedImages.push(ev.target.result); renderImages(); };
+          r.readAsDataURL(file);
         });
         imgUploadInput.value = '';
       });
-
-      // ==========================================
-      //  TOAST
-      // ==========================================
-      let toastTimer = null;
-      function toastMsg(msg) {
-        toast.textContent = msg;
-        toast.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => {
-          toast.classList.remove('show');
-        }, 1800);
-      }
-
-      // ==========================================
-      //  INIT
-      // ==========================================
-      renderShortcuts();
-      textarea.focus();
-
-      // handle window resize: keep panel within bounds
-      window.addEventListener('resize', () => {
-        if (!panel.classList.contains('open')) return;
-        const rect = panel.getBoundingClientRect();
-        const margin = 8;
-        if (rect.right > window.innerWidth - margin) {
-          panel.style.left = (window.innerWidth - panel.offsetWidth - margin) + 'px';
-          panel.style.right = 'auto';
-        }
-        if (rect.bottom > window.innerHeight - margin) {
-          panel.style.top = (window.innerHeight - panel.offsetHeight - margin) + 'px';
-        }
-        if (rect.left < margin) {
-          panel.style.left = margin + 'px';
-          panel.style.right = 'auto';
-        }
-        if (rect.top < margin) {
-          panel.style.top = margin + 'px';
-        }
-      });
-
-    })();
-  </script>
-</body>
+    </script>
+  </body>
 </html>
