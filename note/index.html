@@ -1,45 +1,100 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>eez — live notepad</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
-  </head>
-  <body class="bg-slate-950 text-slate-100 h-screen flex flex-col font-sans">
-    
-    <!-- Top Bar -->
-    <header class="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/50 backdrop-blur">
-      <div class="flex items-center gap-3">
-        <div class="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" id="status-dot"></div>
-        <h1 class="font-semibold text-lg tracking-tight">eez pad</h1>
-        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400" id="peer-count">1 online</span>
-      </div>
-      <div class="flex items-center gap-3">
-        <button id="copy-btn" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition">Share Room</button>
-        <button id="clear-btn" class="text-xs px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition">Clear</button>
-      </div>
-    </header>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eez · live notepad</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+  <style>
+    /* subtle custom scroll + textarea refinement */
+    #notepad {
+      scrollbar-width: thin;
+      scrollbar-color: #334155 #0f172a;
+      transition: box-shadow 0.2s ease;
+    }
+    #notepad:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.3);
+      border-radius: 8px;
+    }
+    .status-dot {
+      transition: background-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .status-dot.live {
+      background-color: #10b981;
+      box-shadow: 0 0 10px #10b98166;
+    }
+    .status-dot.reconnecting {
+      background-color: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b66;
+    }
+    .status-dot.offline {
+      background-color: #ef4444;
+      box-shadow: 0 0 6px #ef444466;
+    }
+    .peer-pill {
+      background: #1e293b;
+      transition: background 0.15s;
+    }
+    .peer-pill:hover {
+      background: #334155;
+    }
+    .btn-press:active {
+      transform: scale(0.96);
+    }
+    /* nicer placeholder */
+    #notepad::placeholder {
+      color: #475569;
+      font-style: italic;
+      font-weight: 300;
+    }
+    @keyframes soft-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .animate-soft-pulse {
+      animation: soft-pulse 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen flex flex-col font-sans antialiased">
 
-    <!-- Main Notepad Area -->
-    <main class="flex-1 relative p-6 max-w-4xl w-full mx-auto flex flex-col">
-      <textarea
-        id="notepad"
-        placeholder="Start typing... anyone with this room link will see your words instantly as they appear."
-        class="flex-1 w-full bg-transparent resize-none outline-none text-lg leading-relaxed placeholder:text-slate-600 font-mono"
-      ></textarea>
-    </main>
+  <!-- Top Bar -->
+  <header class="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-800 bg-slate-900/70 backdrop-blur-sm">
+    <div class="flex items-center gap-3">
+      <div class="h-2.5 w-2.5 rounded-full status-dot live" id="status-dot"></div>
+      <h1 class="font-semibold text-lg tracking-tight text-slate-100">eez <span class="text-slate-400 font-light">pad</span></h1>
+      <span class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 peer-pill" id="peer-count">1 online</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="copy-btn" class="text-xs px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors duration-150 btn-press font-medium text-slate-200">Share Room</button>
+      <button id="clear-btn" class="text-xs px-3.5 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-colors duration-150 btn-press font-medium">Clear</button>
+    </div>
+  </header>
 
-    <!-- Footer Status -->
-    <footer class="px-6 py-3 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center bg-slate-900/30">
-      <span id="sync-status">Connected to live stream</span>
-      <span id="char-count">0 characters</span>
-    </footer>
+  <!-- Main Notepad Area -->
+  <main class="flex-1 relative p-4 md:p-6 max-w-5xl w-full mx-auto flex flex-col">
+    <textarea
+      id="notepad"
+      placeholder="Start typing… anyone with this room link will see your words instantly as they appear."
+      class="flex-1 w-full bg-slate-900/20 resize-none outline-none text-base md:text-lg leading-relaxed placeholder:text-slate-600 font-mono p-5 rounded-xl border border-slate-800/60 focus:border-emerald-500/50 transition-colors duration-150"
+      spellcheck="false"
+    ></textarea>
+  </main>
 
-    <!-- Script -->
-    <script>
-      // 1. Room ID from URL hash or default to a shared public room
+  <!-- Footer Status -->
+  <footer class="px-6 py-3 border-t border-slate-800 text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2 bg-slate-900/40">
+    <span id="sync-status" class="flex items-center gap-2">
+      <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-soft-pulse"></span>
+      Connected to live stream
+    </span>
+    <span id="char-count" class="text-slate-500">0 characters</span>
+  </footer>
+
+  <script>
+    (function() {
+      // ---- room & elements ----
       const roomId = window.location.hash.slice(1) || 'eez-notepad-default-room';
       if (!window.location.hash) window.location.hash = roomId;
 
@@ -51,115 +106,267 @@
       const copyBtn = document.getElementById('copy-btn');
       const clearBtn = document.getElementById('clear-btn');
 
+      // ---- client identity ----
       const clientId = 'notepad_' + Math.random().toString(36).slice(2, 9);
       const topic = 'eez/v1/notepad/' + encodeURIComponent(roomId);
 
       let isRemoteUpdate = false;
       let peers = new Set([clientId]);
+      let lastTypingBroadcast = 0;
+      const TYPING_THROTTLE_MS = 50;   // minimal throttle for smooth typing
 
-      // 2. Connect to MQTT Broker (same as eez chat)
+      // ---- MQTT connection ----
       const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
         clientId,
         clean: true,
         connectTimeout: 5000,
+        reconnectPeriod: 2000,
       });
+
+      // ---- connection status ----
+      function setStatus(mode, text) {
+        if (mode === 'live') {
+          statusDot.className = 'h-2.5 w-2.5 rounded-full status-dot live';
+          syncStatus.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-soft-pulse"></span> Live sync active';
+        } else if (mode === 'reconnecting') {
+          statusDot.className = 'h-2.5 w-2.5 rounded-full status-dot reconnecting';
+          syncStatus.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 animate-soft-pulse"></span> Reconnecting…';
+        } else if (mode === 'offline') {
+          statusDot.className = 'h-2.5 w-2.5 rounded-full status-dot offline';
+          syncStatus.innerHTML = '<span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-500"></span> Offline';
+        }
+        if (text) syncStatus.textContent = text;
+      }
 
       client.on('connect', () => {
-        statusDot.className = "h-3 w-3 rounded-full bg-emerald-500";
-        syncStatus.textContent = "Live sync active";
+        setStatus('live');
         client.subscribe(topic);
-        // Announce presence
+        // announce presence + optional state request
         client.publish(topic, JSON.stringify({ type: 'join', clientId }));
+        // if we already have text, share it
+        if (textarea.value.trim().length > 0) {
+          client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
+        }
       });
 
-      client.on('reconnect', () => {
-        statusDot.className = "h-3 w-3 rounded-full bg-amber-500 animate-pulse";
-        syncStatus.textContent = "Reconnecting...";
+      client.on('reconnect', () => setStatus('reconnecting'));
+      client.on('offline', () => setStatus('offline'));
+      client.on('error', (err) => {
+        console.warn('MQTT error:', err);
+        setStatus('offline');
       });
 
-      client.on('offline', () => {
-        statusDot.className = "h-3 w-3 rounded-full bg-rose-500";
-        syncStatus.textContent = "Offline";
-      });
+      // ---- update UI helpers ----
+      function updateCharCount() {
+        const len = textarea.value.length;
+        charCountEl.textContent = len + (len === 1 ? ' character' : ' characters');
+      }
 
-      // 3. Handle Incoming Data
+      function updatePeerCount() {
+        // remove stale peers? simple approach: just show current set size
+        const count = peers.size;
+        peerCountEl.textContent = count + (count === 1 ? ' online' : ' online');
+      }
+
+      // ---- incoming messages ----
       client.on('message', (t, payload) => {
+        if (t !== topic) return;
         try {
           const data = JSON.parse(payload.toString());
-          
+
+          // presence & pings
           if (data.type === 'join' || data.type === 'ping') {
-            peers.add(data.clientId);
-            updatePeerCount();
-            // Reply with current state if we are the veteran
-            if (data.type === 'join' && textarea.value) {
-              client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
+            if (data.clientId && data.clientId !== clientId) {
+              peers.add(data.clientId);
+              updatePeerCount();
             }
-          } else if (data.type === 'state' && !textarea.value) {
-            isRemoteUpdate = true;
-            textarea.value = data.content;
-            updateStats();
-            isRemoteUpdate = false;
-          } else if (data.type === 'text_update' && data.clientId !== clientId) {
-            isRemoteUpdate = true;
+            // if someone joins and we have content, send state (only if we are not the new one)
+            if (data.type === 'join' && data.clientId !== clientId && textarea.value.length > 0) {
+              client.publish(topic, JSON.stringify({
+                type: 'state',
+                content: textarea.value,
+                clientId,
+              }));
+            }
+            // also if we are the only one with content and receive join, send state
+            if (data.type === 'join' && data.clientId !== clientId && !textarea.value && !data.content) {
+              // no op, just polite
+            }
+          }
+          // full state sync (only apply if we are empty or remote is newer? use remote as truth)
+          else if (data.type === 'state') {
+            // accept state if we are not the sender
+            if (data.clientId !== clientId) {
+              // preserve cursor if possible (but we overwrite)
+              const start = textarea.selectionStart;
+              const end = textarea.selectionEnd;
+              isRemoteUpdate = true;
+              textarea.value = data.content;
+              // restore cursor position approximately
+              const newLen = data.content.length;
+              const newStart = Math.min(start, newLen);
+              const newEnd = Math.min(end, newLen);
+              try { textarea.setSelectionRange(newStart, newEnd); } catch (e) {}
+              updateCharCount();
+              isRemoteUpdate = false;
+            }
+          }
+          // text update — the core realtime collaboration
+          else if (data.type === 'text_update' && data.clientId !== clientId) {
             const start = textarea.selectionStart;
             const end = textarea.selectionEnd;
-            
+            isRemoteUpdate = true;
             textarea.value = data.content;
-            
-            // Try to preserve cursor position gracefully
-            try { textarea.setSelectionRange(start, end); } catch(e) {}
-            
-            updateStats();
+            // restore cursor as best as possible
+            const newLen = data.content.length;
+            const newStart = Math.min(start, newLen);
+            const newEnd = Math.min(end, newLen);
+            try { textarea.setSelectionRange(newStart, newEnd); } catch (e) {}
+            updateCharCount();
             isRemoteUpdate = false;
-          } else if (data.type === 'clear') {
+          }
+          // clear command
+          else if (data.type === 'clear' && data.clientId !== clientId) {
             isRemoteUpdate = true;
             textarea.value = '';
-            updateStats();
+            updateCharCount();
             isRemoteUpdate = false;
+          }
+        } catch (e) {
+          // ignore malformed messages
+        }
+      });
+
+      // ---- broadcast local typing (throttled) ----
+      function broadcastTextUpdate(immediate = false) {
+        if (!client.connected) return;
+        const now = Date.now();
+        if (!immediate && now - lastTypingBroadcast < TYPING_THROTTLE_MS) {
+          // schedule trailing edge? simpler: skip, we have a leading edge throttle
+          return;
+        }
+        lastTypingBroadcast = now;
+        client.publish(topic, JSON.stringify({
+          type: 'text_update',
+          content: textarea.value,
+          clientId,
+        }));
+      }
+
+      // use input event with a micro throttle but also send on keyup to catch final state
+      let typingTimer = null;
+      textarea.addEventListener('input', () => {
+        if (isRemoteUpdate) return;
+        updateCharCount();
+
+        // leading edge throttle: send immediately if enough time passed
+        broadcastTextUpdate(false);
+
+        // trailing edge: send after a tiny delay to catch final char quickly
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+          broadcastTextUpdate(true);
+        }, 70);
+      });
+
+      // also broadcast on blur to ensure sync (optional)
+      textarea.addEventListener('blur', () => {
+        if (!isRemoteUpdate && client.connected) {
+          broadcastTextUpdate(true);
+        }
+      });
+
+      // ---- share room button ----
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          copyBtn.textContent = 'Copied!';
+          copyBtn.classList.add('bg-emerald-700/40', 'text-emerald-200');
+          setTimeout(() => {
+            copyBtn.textContent = 'Share Room';
+            copyBtn.classList.remove('bg-emerald-700/40', 'text-emerald-200');
+          }, 2000);
+        } catch (err) {
+          // fallback
+          prompt('Copy this link:', window.location.href);
+        }
+      });
+
+      // ---- clear button ----
+      clearBtn.addEventListener('click', () => {
+        if (!textarea.value && !confirm('Clear notepad for everyone?')) return;
+        textarea.value = '';
+        updateCharCount();
+        // broadcast clear
+        if (client.connected) {
+          client.publish(topic, JSON.stringify({ type: 'clear', clientId }));
+        }
+        textarea.focus();
+      });
+
+      // ---- peer cleanup: remove peers that haven't pinged in a while? 
+      // we use ping every 15s, but without timestamps, we keep it simple: remove on disconnect? 
+      // For better presence, we'll add a simple "last seen" map via pings
+      const peerLastSeen = new Map();
+      // override message handler for join/ping to track lastSeen
+      const originalMessageHandler = client.listeners('message')[0]; // get the first listener
+      // instead of overriding, we'll add a separate handler for presence
+      client.on('message', (t, payload) => {
+        if (t !== topic) return;
+        try {
+          const data = JSON.parse(payload.toString());
+          if ((data.type === 'join' || data.type === 'ping') && data.clientId && data.clientId !== clientId) {
+            peerLastSeen.set(data.clientId, Date.now());
+            peers.add(data.clientId);
+            updatePeerCount();
           }
         } catch (e) {}
       });
 
-      // 4. Broadcast Local Typing
-      textarea.addEventListener('input', () => {
-        if (isRemoteUpdate) return;
-        updateStats();
-        
-        client.publish(topic, JSON.stringify({
-          type: 'text_update',
-          content: textarea.value,
-          clientId
-        }));
-      });
+      // remove stale peers every 20s (if no ping for > 30s, consider gone)
+      setInterval(() => {
+        const now = Date.now();
+        let changed = false;
+        for (const [id, last] of peerLastSeen.entries()) {
+          if (now - last > 35000 && id !== clientId) {
+            peers.delete(id);
+            peerLastSeen.delete(id);
+            changed = true;
+          }
+        }
+        // also ensure our own id is present
+        if (!peers.has(clientId)) {
+          peers.add(clientId);
+          changed = true;
+        }
+        if (changed) updatePeerCount();
+      }, 20000);
 
-      function updateStats() {
-        const text = textarea.value;
-        charCountEl.textContent = text.length + " characters";
-      }
-
-      function updatePeerCount() {
-        peerCountEl.textContent = peers.size + (peers.size === 1 ? " online" : " online");
-      }
-
-      // 5. Actions
-      copyBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(window.location.href);
-        copyBtn.textContent = "Copied Link!";
-        setTimeout(() => copyBtn.textContent = "Share Room", 2000);
-      });
-
-      clearBtn.addEventListener('click', () => {
-        textarea.value = '';
-        updateStats();
-        client.publish(topic, JSON.stringify({ type: 'clear', clientId }));
-      });
-
-      // Periodic presence ping
+      // periodic presence ping & cleanup request
       setInterval(() => {
         if (client.connected) {
           client.publish(topic, JSON.stringify({ type: 'ping', clientId }));
         }
       }, 15000);
-    </script>
-  </body>
+
+      // initial UI sync
+      updateCharCount();
+      updatePeerCount();
+
+      // make textarea focus on load
+      window.addEventListener('load', () => textarea.focus());
+
+      // handle page visibility: if hidden and then visible, maybe re-sync? optional
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && client.connected && textarea.value.length > 0) {
+          // re-publish state to help new joiners? not needed
+        }
+      });
+
+      // also handle before unload to remove peer? not necessary
+
+      // ensure textarea height adapts (flex-1 already does)
+    })();
+  </script>
+</body>
 </html>
