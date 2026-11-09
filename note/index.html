@@ -1,243 +1,420 @@
-<script>
-  // ===== ROOM =====
-  const roomId = window.location.hash.slice(1) || 'eez-notepad-default-room';
-  if (!window.location.hash) window.location.hash = roomId;
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>note</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js"></script>
+    <style>
+      html, body { background:#000; height:100%; margin:0; padding:0; overflow:hidden; }
+      #notepad { caret-color:#34d399; }
+      #notepad::placeholder { color:#1e293b; font-style:italic; font-weight:300; }
+      #notepad::-webkit-scrollbar { width:6px; }
+      #notepad::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
 
-  const textarea = document.getElementById('notepad');
-  const statusDot = document.getElementById('status-dot');
+      #status-btn {
+        position:fixed; top:1rem; right:1rem; width:1.6rem; height:1.6rem;
+        border-radius:50%; background:#111; border:1px solid #1e293b;
+        display:flex; align-items:center; justify-content:center;
+        cursor:pointer; z-index:200; transition:border-color .2s, background .2s;
+      }
+      #status-btn:hover { border-color:#334155; background:#1a1a1a; }
+      #status-btn .dot {
+        width:.55rem; height:.55rem; border-radius:50%; background:#10b981;
+        box-shadow:0 0 8px #10b98188; transition:background-color .3s, box-shadow .3s;
+        pointer-events:none;
+      }
+      #status-btn .dot.reconnecting { background:#f59e0b; box-shadow:0 0 6px #f59e0b88; }
+      #status-btn .dot.offline { background:#ef4444; box-shadow:0 0 5px #ef444488; }
 
-  const clientId = 'notepad_' + Math.random().toString(36).slice(2, 9);
-  const topic = 'eez/v1/notepad/' + encodeURIComponent(roomId);
+      #panel {
+        position:fixed; top:3.5rem; right:1rem; width:20rem; max-height:75vh;
+        background:#0a0a0a; border:1px solid #1e293b; border-radius:.6rem;
+        display:none; flex-direction:column; z-index:150;
+        box-shadow:0 10px 40px rgba(0,0,0,.8); overflow:hidden; font-size:.8rem;
+      }
+      #panel.open { display:flex; }
+      #panel-header {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:.5rem .75rem; border-bottom:1px solid #1e293b;
+        cursor:grab; user-select:none; background:#0f0f0f;
+        border-radius:.6rem .6rem 0 0; flex-shrink:0;
+      }
+      #panel-header:active { cursor:grabbing; }
+      #panel-header span {
+        color:#94a3b8; font-size:.7rem; font-weight:500;
+        letter-spacing:.03em; text-transform:uppercase;
+      }
+      #panel-close {
+        background:transparent; border:none; color:#475569; cursor:pointer;
+        font-size:1rem; line-height:1; padding:0 .2rem;
+      }
+      #panel-close:hover { color:#e2e8f0; }
+      #panel-body {
+        padding:.75rem; overflow-y:auto; display:flex;
+        flex-direction:column; gap:.9rem;
+      }
+      #panel-body::-webkit-scrollbar { width:4px; }
+      #panel-body::-webkit-scrollbar-thumb { background:#1e293b; border-radius:2px; }
+      .section-label {
+        color:#64748b; font-size:.65rem; text-transform:uppercase;
+        letter-spacing:.06em; margin-bottom:.35rem; font-weight:600;
+      }
 
-  let isRemoteUpdate = false;
-  let peers = new Set([clientId]);
+      .format-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.3rem; }
+      .format-btn {
+        display:flex; flex-direction:column; align-items:center; gap:.2rem;
+        background:#111; border:1px solid #1e293b; border-radius:.35rem;
+        color:#cbd5e1; padding:.4rem .2rem; cursor:pointer;
+        transition:background .12s, border-color .12s; font-size:.65rem;
+      }
+      .format-btn:hover { background:#1e293b; border-color:#334155; }
+      .format-btn:active { transform:scale(.95); }
+      .format-btn .icon { font-size:.95rem; line-height:1; color:#34d399; font-family:'SF Mono',monospace; font-weight:700; }
+      .format-btn .label { color:#64748b; font-size:.55rem; text-transform:uppercase; letter-spacing:.04em; }
+      .format-btn kbd {
+        background:#0a0a0a; border:1px solid #1e293b; border-radius:.15rem;
+        color:#475569; font-family:'SF Mono',monospace; font-size:.5rem;
+        padding:.05rem .2rem; margin-top:.1rem;
+      }
 
-  const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
-    clientId,
-    clean: true,
-    connectTimeout: 5000,
-  });
+      .shortcut-list { display:flex; flex-direction:column; gap:.2rem; }
+      .shortcut-row {
+        display:flex; align-items:center; justify-content:space-between;
+        padding:.25rem .4rem; border-radius:.25rem;
+      }
+      .shortcut-row:hover { background:#0f0f0f; }
+      .shortcut-row .keys { display:flex; gap:.15rem; align-items:center; }
+      .shortcut-row .keys kbd {
+        background:#1e293b; border:1px solid #334155; border-bottom-width:2px;
+        border-radius:.2rem; color:#cbd5e1; font-family:'SF Mono',monospace;
+        font-size:.6rem; padding:.1rem .3rem; line-height:1.2;
+        display:inline-block; min-width:.9rem; text-align:center;
+      }
+      .shortcut-row .desc { color:#94a3b8; font-size:.7rem; text-align:right; }
 
-  client.on('connect', () => {
-    statusDot.className = "dot animate-soft-pulse";
-    client.subscribe(topic);
-    client.publish(topic, JSON.stringify({ type: 'join', clientId }));
-  });
+      .img-upload-btn {
+        display:inline-flex; align-items:center; gap:.4rem; background:#111;
+        border:1px solid #1e293b; color:#94a3b8; font-size:.7rem;
+        padding:.4rem .7rem; border-radius:.4rem; cursor:pointer;
+        transition:background .12s, border-color .12s, color .12s;
+      }
+      .img-upload-btn:hover { background:#1e293b; color:#e2e8f0; border-color:#334155; }
+      #img-preview {
+        display:flex; flex-wrap:wrap; gap:.3rem; margin-top:.5rem;
+        max-height:8rem; overflow-y:auto;
+      }
+      .img-thumb {
+        position:relative; width:3.2rem; height:3.2rem; border-radius:.3rem;
+        overflow:hidden; border:1px solid #1e293b; flex-shrink:0;
+      }
+      .img-thumb img { width:100%; height:100%; object-fit:cover; }
+      .img-thumb .remove {
+        position:absolute; top:1px; right:1px; width:1rem; height:1rem;
+        background:rgba(0,0,0,.7); border-radius:50%; color:#f87171;
+        font-size:.6rem; display:flex; align-items:center; justify-content:center;
+        cursor:pointer; border:none; line-height:1;
+      }
+      .img-thumb .remove:hover { background:#450a0a; color:#fca5a5; }
 
-  client.on('reconnect', () => {
-    statusDot.className = "dot animate-soft-pulse reconnecting";
-  });
+      @keyframes soft-pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+      .animate-soft-pulse { animation:soft-pulse 2s infinite ease-in-out; }
+    </style>
+  </head>
+  <body class="bg-black text-slate-100 h-screen flex flex-col font-sans">
 
-  client.on('offline', () => {
-    statusDot.className = "dot animate-soft-pulse offline";
-  });
+    <button id="status-btn" title="status & tools">
+      <div class="dot animate-soft-pulse" id="status-dot"></div>
+    </button>
 
-  // ===== INCOMING =====
-  client.on('message', (t, payload) => {
-    try {
-      const data = JSON.parse(payload.toString());
+    <div id="panel">
+      <div id="panel-header">
+        <span>tools</span>
+        <button id="panel-close">✕</button>
+      </div>
+      <div id="panel-body">
+        <div>
+          <div class="section-label">formatting</div>
+          <div class="format-grid">
+            <button class="format-btn" data-action="bold"><span class="icon">B</span><span class="label">bold</span><kbd>⌃B</kbd></button>
+            <button class="format-btn" data-action="italic"><span class="icon" style="font-style:italic">I</span><span class="label">italic</span><kbd>⌃I</kbd></button>
+            <button class="format-btn" data-action="underline"><span class="icon" style="text-decoration:underline">U</span><span class="label">under</span><kbd>⌃U</kbd></button>
+            <button class="format-btn" data-action="strike"><span class="icon" style="text-decoration:line-through">S</span><span class="label">strike</span><kbd>⌃⇧X</kbd></button>
+            <button class="format-btn" data-action="code"><span class="icon" style="font-family:monospace">&lt;/&gt;</span><span class="label">code</span><kbd>⌃E</kbd></button>
+            <button class="format-btn" data-action="highlight"><span class="icon" style="background:#facc15;color:#000;padding:0 .15rem;border-radius:.1rem">H</span><span class="label">highlight</span><kbd>⌃⇧H</kbd></button>
+            <button class="format-btn" data-action="bullet"><span class="icon">•</span><span class="label">bullet</span><kbd>⌃⇧8</kbd></button>
+            <button class="format-btn" data-action="numbered"><span class="icon">1.</span><span class="label">number</span><kbd>⌃⇧7</kbd></button>
+            <button class="format-btn" data-action="link"><span class="icon">🔗</span><span class="label">link</span><kbd>⌃K</kbd></button>
+          </div>
+        </div>
 
-      if (data.type === 'join' || data.type === 'ping') {
-        peers.add(data.clientId);
-        if (data.type === 'join' && textarea.value) {
-          client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
+        <div>
+          <div class="section-label">keyboard shortcuts</div>
+          <div class="shortcut-list">
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>Z</kbd></div><span class="desc">undo</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>⇧</kbd><kbd>Z</kbd></div><span class="desc">redo</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>A</kbd></div><span class="desc">select all</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>F</kbd></div><span class="desc">find</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>H</kbd></div><span class="desc">replace</span></div>
+            <div class="shortcut-row"><div class="keys"><kbd>⌃</kbd><kbd>⇧</kbd><kbd>V</kbd></div><span class="desc">paste plain</span></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-label">images</div>
+          <label class="img-upload-btn" for="img-upload-input"><span>📷</span> upload image</label>
+          <input type="file" id="img-upload-input" accept="image/*" multiple style="display:none" />
+          <div id="img-preview"></div>
+        </div>
+      </div>
+    </div>
+
+    <main class="flex-1 relative p-6 w-full mx-auto flex flex-col">
+      <textarea
+        id="notepad"
+        placeholder="start typing..."
+        class="flex-1 w-full bg-transparent resize-none outline-none text-lg leading-relaxed placeholder:text-slate-600 font-mono"
+        spellcheck="false"
+        autofocus
+      ></textarea>
+    </main>
+
+    <script>
+      const roomId = window.location.hash.slice(1) || 'eez-notepad-default-room';
+      if (!window.location.hash) window.location.hash = roomId;
+
+      const textarea = document.getElementById('notepad');
+      const statusDot = document.getElementById('status-dot');
+
+      const clientId = 'notepad_' + Math.random().toString(36).slice(2, 9);
+      const topic = 'eez/v1/notepad/' + encodeURIComponent(roomId);
+
+      let isRemoteUpdate = false;
+      let peers = new Set([clientId]);
+
+      const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+        clientId,
+        clean: true,
+        connectTimeout: 5000,
+      });
+
+      client.on('connect', () => {
+        statusDot.className = "dot animate-soft-pulse";
+        client.subscribe(topic);
+        client.publish(topic, JSON.stringify({ type: 'join', clientId }));
+      });
+
+      client.on('reconnect', () => {
+        statusDot.className = "dot animate-soft-pulse reconnecting";
+      });
+
+      client.on('offline', () => {
+        statusDot.className = "dot animate-soft-pulse offline";
+      });
+
+      client.on('message', (t, payload) => {
+        try {
+          const data = JSON.parse(payload.toString());
+
+          if (data.type === 'join' || data.type === 'ping') {
+            peers.add(data.clientId);
+            if (data.type === 'join' && textarea.value) {
+              client.publish(topic, JSON.stringify({ type: 'state', content: textarea.value, clientId }));
+            }
+          } else if (data.type === 'state' && !textarea.value) {
+            isRemoteUpdate = true;
+            textarea.value = data.content;
+            isRemoteUpdate = false;
+          } else if (data.type === 'text_update' && data.clientId !== clientId) {
+            isRemoteUpdate = true;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.value = data.content;
+            try { textarea.setSelectionRange(start, end); } catch(e) {}
+            isRemoteUpdate = false;
+          } else if (data.type === 'clear') {
+            isRemoteUpdate = true;
+            textarea.value = '';
+            isRemoteUpdate = false;
+          }
+        } catch (e) {}
+      });
+
+      textarea.addEventListener('input', () => {
+        if (isRemoteUpdate) return;
+        client.publish(topic, JSON.stringify({
+          type: 'text_update',
+          content: textarea.value,
+          clientId
+        }));
+      });
+
+      setInterval(() => {
+        if (client.connected) {
+          client.publish(topic, JSON.stringify({ type: 'ping', clientId }));
         }
-      } else if (data.type === 'state' && !textarea.value) {
-        isRemoteUpdate = true;
-        textarea.value = data.content;
-        isRemoteUpdate = false;
-      } else if (data.type === 'text_update' && data.clientId !== clientId) {
-        isRemoteUpdate = true;
+      }, 15000);
+
+      function broadcastFull() {
+        if (!client.connected) return;
+        client.publish(topic, JSON.stringify({
+          type: 'text_update', content: textarea.value, clientId
+        }));
+      }
+
+      function wrapSelection(prefix, suffix, placeholder) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-        textarea.value = data.content;
-        try { textarea.setSelectionRange(start, end); } catch(e) {}
-        isRemoteUpdate = false;
-      } else if (data.type === 'clear') {
+        const sel = textarea.value.slice(start, end) || placeholder || '';
+        const next = textarea.value.slice(0, start) + prefix + sel + suffix + textarea.value.slice(end);
         isRemoteUpdate = true;
-        textarea.value = '';
+        textarea.value = next;
+        try {
+          textarea.setSelectionRange(start + prefix.length, start + prefix.length + sel.length);
+        } catch(e) {}
         isRemoteUpdate = false;
+        textarea.focus();
+        broadcastFull();
       }
-    } catch (e) {}
-  });
 
-  // ===== LOCAL TYPING =====
-  textarea.addEventListener('input', () => {
-    if (isRemoteUpdate) return;
-    client.publish(topic, JSON.stringify({
-      type: 'text_update',
-      content: textarea.value,
-      clientId
-    }));
-  });
+      function prefixLine(prefix) {
+        const start = textarea.selectionStart;
+        const lineStart = textarea.value.lastIndexOf('\n', start - 1) + 1;
+        const next = textarea.value.slice(0, lineStart) + prefix + textarea.value.slice(lineStart);
+        isRemoteUpdate = true;
+        textarea.value = next;
+        try { textarea.setSelectionRange(start + prefix.length, start + prefix.length); } catch(e) {}
+        isRemoteUpdate = false;
+        textarea.focus();
+        broadcastFull();
+      }
 
-  // presence ping
-  setInterval(() => {
-    if (client.connected) {
-      client.publish(topic, JSON.stringify({ type: 'ping', clientId }));
-    }
-  }, 15000);
+      function applyFormat(action) {
+        switch (action) {
+          case 'bold': return wrapSelection('**', '**', 'bold text');
+          case 'italic': return wrapSelection('*', '*', 'italic text');
+          case 'underline': return wrapSelection('<u>', '</u>', 'underlined');
+          case 'strike': return wrapSelection('~~', '~~', 'strikethrough');
+          case 'code': return wrapSelection('`', '`', 'code');
+          case 'highlight': return wrapSelection('==', '==', 'highlighted');
+          case 'bullet': return prefixLine('- ');
+          case 'numbered': return prefixLine('1. ');
+          case 'link': return wrapSelection('[', '](https://)', 'link text');
+        }
+      }
 
-  // ===== FORMATTING =====
-  function broadcastFull() {
-    if (!client.connected) return;
-    client.publish(topic, JSON.stringify({
-      type: 'text_update', content: textarea.value, clientId
-    }));
-  }
-
-  function wrapSelection(prefix, suffix, placeholder) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const sel = textarea.value.slice(start, end) || placeholder || '';
-    const next = textarea.value.slice(0, start) + prefix + sel + suffix + textarea.value.slice(end);
-    isRemoteUpdate = true;
-    textarea.value = next;
-    try {
-      textarea.setSelectionRange(start + prefix.length, start + prefix.length + sel.length);
-    } catch(e) {}
-    isRemoteUpdate = false;
-    textarea.focus();
-    broadcastFull();
-  }
-
-  function prefixLine(prefix) {
-    const start = textarea.selectionStart;
-    const lineStart = textarea.value.lastIndexOf('\n', start - 1) + 1;
-    const next = textarea.value.slice(0, lineStart) + prefix + textarea.value.slice(lineStart);
-    isRemoteUpdate = true;
-    textarea.value = next;
-    try { textarea.setSelectionRange(start + prefix.length, start + prefix.length); } catch(e) {}
-    isRemoteUpdate = false;
-    textarea.focus();
-    broadcastFull();
-  }
-
-  function applyFormat(action) {
-    switch (action) {
-      case 'bold': return wrapSelection('**', '**', 'bold text');
-      case 'italic': return wrapSelection('*', '*', 'italic text');
-      case 'underline': return wrapSelection('<u>', '</u>', 'underlined');
-      case 'strike': return wrapSelection('~~', '~~', 'strikethrough');
-      case 'code': return wrapSelection('`', '`', 'code');
-      case 'highlight': return wrapSelection('==', '==', 'highlighted');
-      case 'bullet': return prefixLine('- ');
-      case 'numbered': return prefixLine('1. ');
-      case 'link': return wrapSelection('[', '](https://)', 'link text');
-    }
-  }
-
-  document.querySelectorAll('.format-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      applyFormat(btn.dataset.action);
-    });
-  });
-
-  document.addEventListener('keydown', (e) => {
-    const mod = e.ctrlKey || e.metaKey;
-    if (!mod) return;
-    if (document.activeElement !== textarea) return;
-    const key = e.key.toLowerCase();
-
-    if (!e.shiftKey) {
-      if (key === 'b') { e.preventDefault(); applyFormat('bold'); }
-      else if (key === 'i') { e.preventDefault(); applyFormat('italic'); }
-      else if (key === 'u') { e.preventDefault(); applyFormat('underline'); }
-      else if (key === 'e') { e.preventDefault(); applyFormat('code'); }
-      else if (key === 'k') { e.preventDefault(); applyFormat('link'); }
-    } else {
-      if (key === 'x') { e.preventDefault(); applyFormat('strike'); }
-      else if (key === 'h') { e.preventDefault(); applyFormat('highlight'); }
-      else if (key === '8') { e.preventDefault(); applyFormat('bullet'); }
-      else if (key === '7') { e.preventDefault(); applyFormat('numbered'); }
-    }
-  });
-
-  // ===== PANEL =====
-  const panel = document.getElementById('panel');
-  const statusBtn = document.getElementById('status-btn');
-  const panelHeader = document.getElementById('panel-header');
-  const panelClose = document.getElementById('panel-close');
-
-  function togglePanel(open) {
-    const should = open !== undefined ? open : !panel.classList.contains('open');
-    panel.classList.toggle('open', should);
-  }
-  statusBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePanel(); });
-  panelClose.addEventListener('click', () => togglePanel(false));
-  document.addEventListener('click', (e) => {
-    if (!panel.classList.contains('open')) return;
-    if (panel.contains(e.target) || statusBtn.contains(e.target)) return;
-    togglePanel(false);
-  });
-
-  let dragging = false, dsx = 0, dsy = 0, psl = 0, pst = 0;
-  function startDrag(x, y) {
-    const r = panel.getBoundingClientRect();
-    psl = r.left; pst = r.top; dsx = x; dsy = y;
-    panel.style.right = 'auto';
-    panel.style.left = psl + 'px';
-    panel.style.top = pst + 'px';
-    dragging = true;
-  }
-  function moveDrag(x, y) {
-    if (!dragging) return;
-    const m = 8;
-    let nl = Math.max(m, Math.min(psl + (x - dsx), window.innerWidth - panel.offsetWidth - m));
-    let nt = Math.max(m, Math.min(pst + (y - dsy), window.innerHeight - panel.offsetHeight - m));
-    panel.style.left = nl + 'px';
-    panel.style.top = nt + 'px';
-  }
-  function endDrag() { dragging = false; }
-
-  panelHeader.addEventListener('mousedown', (e) => {
-    if (e.button !== 0 || e.target === panelClose) return;
-    e.preventDefault();
-    startDrag(e.clientX, e.clientY);
-    document.body.style.userSelect = 'none';
-  });
-  document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
-  document.addEventListener('mouseup', () => { endDrag(); document.body.style.userSelect = ''; });
-  panelHeader.addEventListener('touchstart', (e) => {
-    if (e.target === panelClose) return;
-    const t = e.touches[0];
-    startDrag(t.clientX, t.clientY);
-  }, { passive: true });
-  document.addEventListener('touchmove', (e) => {
-    const t = e.touches[0];
-    moveDrag(t.clientX, t.clientY);
-  }, { passive: true });
-  document.addEventListener('touchend', endDrag);
-
-  // ===== IMAGES =====
-  const uploadedImages = [];
-  const imgUploadInput = document.getElementById('img-upload-input');
-  const imgPreview = document.getElementById('img-preview');
-
-  function renderImages() {
-    imgPreview.innerHTML = '';
-    uploadedImages.forEach((src, i) => {
-      const div = document.createElement('div');
-      div.className = 'img-thumb';
-      div.innerHTML = `<img src="${src}" alt="" /><button class="remove" data-i="${i}">✕</button>`;
-      imgPreview.appendChild(div);
-    });
-    imgPreview.querySelectorAll('.remove').forEach(b => {
-      b.addEventListener('click', (e) => {
-        e.stopPropagation();
-        uploadedImages.splice(parseInt(b.dataset.i, 10), 1);
-        renderImages();
+      document.querySelectorAll('.format-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          applyFormat(btn.dataset.action);
+        });
       });
-    });
-  }
-  imgUploadInput.addEventListener('change', (e) => {
-    Array.from(e.target.files || []).forEach(file => {
-      if (!file.type.startsWith('image/')) return;
-      const r = new FileReader();
-      r.onload = (ev) => { uploadedImages.push(ev.target.result); renderImages(); };
-      r.readAsDataURL(file);
-    });
-    imgUploadInput.value = '';
-  });
-</script>
+
+      document.addEventListener('keydown', (e) => {
+        const mod = e.ctrlKey || e.metaKey;
+        if (!mod) return;
+        if (document.activeElement !== textarea) return;
+        const key = e.key.toLowerCase();
+
+        if (!e.shiftKey) {
+          if (key === 'b') { e.preventDefault(); applyFormat('bold'); }
+          else if (key === 'i') { e.preventDefault(); applyFormat('italic'); }
+          else if (key === 'u') { e.preventDefault(); applyFormat('underline'); }
+          else if (key === 'e') { e.preventDefault(); applyFormat('code'); }
+          else if (key === 'k') { e.preventDefault(); applyFormat('link'); }
+        } else {
+          if (key === 'x') { e.preventDefault(); applyFormat('strike'); }
+          else if (key === 'h') { e.preventDefault(); applyFormat('highlight'); }
+          else if (key === '8') { e.preventDefault(); applyFormat('bullet'); }
+          else if (key === '7') { e.preventDefault(); applyFormat('numbered'); }
+        }
+      });
+
+      const panel = document.getElementById('panel');
+      const statusBtn = document.getElementById('status-btn');
+      const panelHeader = document.getElementById('panel-header');
+      const panelClose = document.getElementById('panel-close');
+
+      function togglePanel(open) {
+        const should = open !== undefined ? open : !panel.classList.contains('open');
+        panel.classList.toggle('open', should);
+      }
+      statusBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePanel(); });
+      panelClose.addEventListener('click', () => togglePanel(false));
+      document.addEventListener('click', (e) => {
+        if (!panel.classList.contains('open')) return;
+        if (panel.contains(e.target) || statusBtn.contains(e.target)) return;
+        togglePanel(false);
+      });
+
+      let dragging = false, dsx = 0, dsy = 0, psl = 0, pst = 0;
+      function startDrag(x, y) {
+        const r = panel.getBoundingClientRect();
+        psl = r.left; pst = r.top; dsx = x; dsy = y;
+        panel.style.right = 'auto';
+        panel.style.left = psl + 'px';
+        panel.style.top = pst + 'px';
+        dragging = true;
+      }
+      function moveDrag(x, y) {
+        if (!dragging) return;
+        const m = 8;
+        let nl = Math.max(m, Math.min(psl + (x - dsx), window.innerWidth - panel.offsetWidth - m));
+        let nt = Math.max(m, Math.min(pst + (y - dsy), window.innerHeight - panel.offsetHeight - m));
+        panel.style.left = nl + 'px';
+        panel.style.top = nt + 'px';
+      }
+      function endDrag() { dragging = false; }
+
+      panelHeader.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || e.target === panelClose) return;
+        e.preventDefault();
+        startDrag(e.clientX, e.clientY);
+        document.body.style.userSelect = 'none';
+      });
+      document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+      document.addEventListener('mouseup', () => { endDrag(); document.body.style.userSelect = ''; });
+      panelHeader.addEventListener('touchstart', (e) => {
+        if (e.target === panelClose) return;
+        const t = e.touches[0];
+        startDrag(t.clientX, t.clientY);
+      }, { passive: true });
+      document.addEventListener('touchmove', (e) => {
+        const t = e.touches[0];
+        moveDrag(t.clientX, t.clientY);
+      }, { passive: true });
+      document.addEventListener('touchend', endDrag);
+
+      const uploadedImages = [];
+      const imgUploadInput = document.getElementById('img-upload-input');
+      const imgPreview = document.getElementById('img-preview');
+
+      function renderImages() {
+        imgPreview.innerHTML = '';
+        uploadedImages.forEach((src, i) => {
+          const div = document.createElement('div');
+          div.className = 'img-thumb';
+          div.innerHTML = `<img src="${src}" alt="" /><button class="remove" data-i="${i}">✕</button>`;
+          imgPreview.appendChild(div);
+        });
+        imgPreview.querySelectorAll('.remove').forEach(b => {
+          b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            uploadedImages.splice(parseInt(b.dataset.i, 10), 1);
+            renderImages();
+          });
+        });
+      }
+      imgUploadInput.addEventListener('change', (e) => {
+        Array.from(e.target.files || []).forEach(file => {
+          if (!file.type.startsWith('image/')) return;
+          const r = new FileReader();
+          r.onload = (ev) => { uploadedImages.push(ev.target.result); renderImages(); };
+          r.readAsDataURL(file);
+        });
+        imgUploadInput.value = '';
+      });
+    </script>
+  </body>
+</html>
